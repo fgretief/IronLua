@@ -190,6 +190,22 @@ host.Trigger('Argument')
             engine.Execute(code);
         }
 
+        [Test]
+        [ExpectedException(ExpectedException = typeof(LuaRuntimeException), ExpectedMessage = "(chunk):6:could not find the member 'Method' on 'i'")]
+        public void TestMissingMethod()
+        {
+            string code =
+@"
+obj=clr.import('System.Object')
+assert(obj,'Failed to import System.Object')
+i = obj()
+assert(i,'Failed to instantiate object')
+i.Method()
+";
+
+            engine.Execute(code);
+        }
+
         public struct TestStruct
         {
             public TestStruct(double _x, double _y)
