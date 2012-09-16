@@ -7,6 +7,7 @@ using Microsoft.Scripting.Runtime;
 using IronLua.Library;
 using System;
 using System.Linq;
+using Expr = System.Linq.Expressions.Expression;
 
 namespace IronLua.Runtime.Binder
 {
@@ -50,6 +51,40 @@ namespace IronLua.Runtime.Binder
                 return System.Convert.ChangeType(obj, toType);
 
             return base.Convert(obj, toType);
+        }
+
+        public override MemberGroup GetMember(MemberRequestKind action, Type type, string name)
+        {
+            try
+            {
+                return base.GetMember(action, type, name);
+            }
+            catch (Exception ex)
+            {
+                throw new LuaRuntimeException(_context, string.Format("could not find the specified member on '{0}'", type.FullName), ex);
+            }
+        }
+
+        public override ErrorInfo MakeMissingMemberErrorInfo(Type type, string name)
+        {
+            var inner = base.MakeMissingMemberErrorInfo(type, name);
+
+            return ErrorInfo.FromException(ThrowRuntimeError("could not find the field, index, method or property '" + name + "' on '" + type.FullName + "'", inner));
+        }
+
+        public override string GetTypeName(Type t)
+        {
+            return BaseLibrary.TypeName(t);
+        }
+
+        private Expr ThrowRuntimeError(string format, params object[] args)
+        {
+            return Expr.New(MemberInfos.NewRuntimeException, Expr.Constant(_context), Expr.Constant(format), Expr.Constant(args));
+        }
+
+        private Expr ThrowRuntimeError(string format, Expr innerEx)
+        {
+            return Expr.New(MemberInfos.NewRuntimeException, Expr.Constant(_context), Expr.Constant(format), innerEx);
         }
     }
 
