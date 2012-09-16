@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text;
 using IronLua.Runtime;
+using System.Text.RegularExpressions;
 
 namespace IronLua.Library
 {
@@ -55,14 +56,21 @@ namespace IronLua.Library
             throw new NotImplementedException();
         }
 
+
+        private static Regex EscapeMatchingRegex = new Regex("%([aAcCdDlLpPsSuUwWxXzZ\\(\\).+\\-*?\\[\\^$%])", RegexOptions.Compiled);
+
         public static object[] Find(string str, string pattern, int? init = 1, bool? plain = false)
         {
             if (plain.HasValue && plain.Value && init.HasValue)
             {
                 var index = str.Substring(init.Value).IndexOf(pattern, StringComparison.Ordinal);
-                return index != -1 ? new object[] {index, index+pattern.Length} : null;
+                return index != -1 ? new object[] { index, index + pattern.Length } : null;
             }
-            throw new NotImplementedException();
+            else
+            {
+                //RegExp matching, using % instead of \
+                return null;
+            }
         }
 
         public static string Format(string format, params object[] varargs)
@@ -80,6 +88,8 @@ namespace IronLua.Library
             table.SetConstant("sub", (Func<string, double, double, string>)Subst); // TODO: varargs
             table.SetConstant("char", (Func<double[], string>) Char); // TODO: varargs
             table.SetConstant("byte", (Func<string, double, double, double[]>) Byte); // TODO: varargs
+
+            table.SetConstant("find", (Func<string, string, int?, bool?, object[]>)Find);
         }
     }
 

@@ -7,6 +7,7 @@ using System.Text;
 using Microsoft.Scripting.Actions;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using System.Collections;
 
 namespace IronLua.Library
 {
@@ -15,7 +16,7 @@ namespace IronLua.Library
         public InteropLibrary(LuaContext context, params Type[] types)
             : base(context)
         {
-
+            InteropMetatable = GenerateMetatable();
         }
         
         public override void Setup(Runtime.LuaTable table)
@@ -28,9 +29,12 @@ namespace IronLua.Library
             table.SetConstant("subscribe", (Action<object, string, Delegate>)InteropSubscribeEvent);
             table.SetConstant("unsubscribe", (Action<object, string, Delegate>)InteropUnsubscribeEvent);
             table.SetConstant("makearray", (Func<object, object, object>)MakeArray);
+            table.SetConstant("itterate", (Func<object, object[], object>)InteropEnumerate);
         }
 
         #region Static Types
+
+        private readonly LuaTable InteropMetatable;
 
         private LuaTable ImportType(string typeName, params object[] args)
         {
@@ -50,9 +54,9 @@ namespace IronLua.Library
             {
                 var table = new LuaTable(Context);
                 table.SetConstant("__clrtype", type);
-                table.Metatable = GenerateMetatable();
+                table.Metatable = InteropMetatable;
 
-                Context.SetTypeMetatable(type, table.Metatable);
+                Context.SetTypeMetatable(type, InteropMetatable);
 
                 return table;
             }
@@ -262,8 +266,10 @@ namespace IronLua.Library
         /// <returns>Returns the new instance of the interop type</returns>
         private object InteropCall(object target, params object[] parameters)
         {
+            Type targetType = target.GetType();
+
             //CLR class reference (static references)
-            if (target is LuaTable)
+            if (targetType == typeof(LuaTable))
             {
                 var type = (target as LuaTable).GetValue("__clrtype") as Type;
 
@@ -274,7 +280,7 @@ namespace IronLua.Library
             }
 
             //CLR instance reference
-            else if (target is BoundMemberTracker)
+            else if (targetType == typeof(BoundMemberTracker))
             {
                 var tracker = target as BoundMemberTracker;
 
@@ -316,8 +322,35 @@ namespace IronLua.Library
                     throw new LuaRuntimeException(Context, ex.Message, ex);
                 }
             }
+            
+            throw new LuaRuntimeException(Context, BaseLibrary.Type(targetType) + " cannot be called directly as a function. If you want to itterate through the collection, use clr.itterate instead");
+        }
 
-            throw new LuaRuntimeException(Context, "Attempting to execute an anonymous function on the given type, this is not possible");
+        private object InteropEnumerate(object target, params object[] parameters)
+        {
+            var targetType = target.GetType();
+
+            if (targetType.GetInterfaces().Any(i => i == typeof(IEnumerable)) || targetType.IsArray)
+            {
+                var e = (target as IEnumerable ?? target as Array).GetEnumerator();
+
+                if (parameters.Length > 1 && parameters[1] != null)
+                    while (e.MoveNext() && !parameters[1].Equals(e.Current)) ;
+
+                return new Varargs(new Func<object, object, object>(InteropItterator), e);
+            }
+            else
+                throw new LuaRuntimeException(Context, BaseLibrary.Type(target) + " does not implement IEnumerable and cannot be enumerated");
+
+            throw new LuaRuntimeException(Context, "bad arguments");
+        }
+
+        private object InteropItterator(object itterator, object state)
+        {
+            var e = itterator as IEnumerator;
+            if (e.MoveNext())
+                return e.Current;
+            return null;
         }
 
         #endregion
