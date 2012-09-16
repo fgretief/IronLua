@@ -300,7 +300,7 @@ namespace IronLua.Runtime
                 var gen = new Generator(this);
                 var exprLambda = gen.Compile(ast, sourceUnit);
                 //sourceUnit.CodeProperties = ScriptCodeParseResult.Complete;
-                return new LuaScriptCode(sourceUnit, exprLambda);
+                return new LuaScriptCode(this, sourceUnit, exprLambda);
             }
         }
 

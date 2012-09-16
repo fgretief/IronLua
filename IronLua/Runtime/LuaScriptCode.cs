@@ -17,11 +17,13 @@ namespace IronLua.Runtime
     {
         private readonly Expression<Func<IDynamicMetaObjectProvider, dynamic>> _exprLambda;
         private Func<IDynamicMetaObjectProvider, dynamic> _compiledLambda;
+        private readonly LuaContext Context;
 
-        public LuaScriptCode(SourceUnit sourceUnit, Expression<Func<IDynamicMetaObjectProvider, dynamic>> chunk)
+        public LuaScriptCode(LuaContext context, SourceUnit sourceUnit, Expression<Func<IDynamicMetaObjectProvider, dynamic>> chunk)
             : base(sourceUnit)
         {
             Contract.Requires(chunk != null);
+            Context = context;
             _exprLambda = chunk;
         }
 
@@ -29,8 +31,22 @@ namespace IronLua.Runtime
         {
             if (_compiledLambda == null)
                 _compiledLambda = _exprLambda.Compile();
-
-            return _compiledLambda(scope);
+            try
+            {
+                return _compiledLambda(scope);
+            }
+            catch (LuaRuntimeException e)
+            {
+                throw;
+            }
+            catch (MissingMemberException mmex)
+            {
+                throw new LuaRuntimeException(Context, "could not find the member '" + mmex.Message + "' on '" + Context.Trace.LastVariableAccess.VariableName + "'", mmex);
+            }
+            catch (Exception ex)
+            {
+                throw new LuaRuntimeException(Context, ex.Message, ex);
+            }
         }
     }
 }
