@@ -111,8 +111,8 @@ for k in pairs(clr) do
     print('    '..k)
 end
 
-f1 = function () p1.ThrowException() end
-f2 = function () f1() end
+function f1 () p1.ThrowException() end
+function f2 () f1() end
 
 f2()
 ";
@@ -127,9 +127,8 @@ f2()
                 WriteLine("Exception", ConsoleColor.Red);
                 Console.WriteLine(ex.Message);
                 Console.WriteLine(line);
-                line = ex.GetStackTrace(code);
                 WriteLine("Stack Trace", ConsoleColor.Red);
-                Console.WriteLine(line);
+                Console.WriteLine(ex.StackTrace);
             }
 
 
