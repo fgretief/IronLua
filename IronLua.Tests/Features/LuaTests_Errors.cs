@@ -73,5 +73,35 @@ return x";
 
             Assert.Fail();
         }
+
+        [Test]
+        public void TestErrors_FourLevelCall()
+        {
+            string code = 
+@"function f1()
+    error('error message')
+end
+
+function f2() f1() end
+function f3() f2() end
+function f4() f3() end
+
+f4()
+";
+            try
+            {
+                engine.Execute(code);
+            }
+            catch (LuaErrorException ex)
+            {
+                Assert.That(ex.StackLevel == 1);
+                Assert.That(ex.Message == "error message");
+                Assert.That(ex.Result == "error message");
+
+                return;
+            }
+
+            Assert.Fail();
+        }
     }
 }
