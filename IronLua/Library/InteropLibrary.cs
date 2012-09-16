@@ -29,7 +29,7 @@ namespace IronLua.Library
             table.SetConstant("subscribe", (Action<object, string, Delegate>)InteropSubscribeEvent);
             table.SetConstant("unsubscribe", (Action<object, string, Delegate>)InteropUnsubscribeEvent);
             table.SetConstant("makearray", (Func<object, object, object>)MakeArray);
-            table.SetConstant("itterate", (Func<object, object[], object>)InteropEnumerate);
+            table.SetConstant("iterate", (Func<object, object[], object>)InteropEnumerate);
         }
 
         #region Static Types
@@ -337,7 +337,7 @@ namespace IronLua.Library
                 if (parameters.Length > 1 && parameters[1] != null)
                     while (e.MoveNext() && !parameters[1].Equals(e.Current)) ;
 
-                return new Varargs(new Func<object, object, object>(InteropItterator), e);
+                return new Varargs(new Func<object, object, object>(InteropIterator), e);
             }
             else
                 throw new LuaRuntimeException(Context, BaseLibrary.Type(target) + " does not implement IEnumerable and cannot be enumerated");
@@ -345,9 +345,9 @@ namespace IronLua.Library
             throw new LuaRuntimeException(Context, "bad arguments");
         }
 
-        private object InteropItterator(object itterator, object state)
+        private object InteropIterator(object iterator, object state)
         {
-            var e = itterator as IEnumerator;
+            var e = iterator as IEnumerator;
             if (e.MoveNext())
                 return e.Current;
             return null;

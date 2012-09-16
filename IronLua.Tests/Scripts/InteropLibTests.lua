@@ -33,14 +33,14 @@ for i=1,#array - 1 do
 	array[i] = 10 - i
 end
 
-for v in clr.itterate(array) do
+for v in clr.iterate(array) do
 	if not itterated then 
-		itterated = v
+		iterated = v
 	else
-		itterated = itterated..','..v
+		iterated = itterated..','..v
 	end
 end
-assert(itterated == '10,9,8,7,6,5,4,3,2,1', 'Array itteration failed, got '..itterated)
+assert(iterated == '10,9,8,7,6,5,4,3,2,1', 'Array itteration failed, got '..itterated)
 print('    Success')
 
 print('Attempting to import List<string>')
@@ -60,5 +60,5 @@ print('    Success')
 print"Testing List<string> itteration"
 for i=1,10 do list.Add("This is a test string") end
 
-for v in clr.itterate(list) do assert(v == 'This is a test string', 'List value was incorrect') end
+for v in clr.iterate(list) do assert(v == 'This is a test string', 'List value was incorrect') end
 print('    Success')
