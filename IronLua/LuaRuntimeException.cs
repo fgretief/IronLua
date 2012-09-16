@@ -240,6 +240,17 @@ namespace IronLua
         /// <summary>
         /// <inheritdoc/>
         /// </summary>
+        public override string Message
+        {
+            get
+            {
+                return Context.Trace.CurrentDocument + ":" + Context.Trace.CurrentSpan.Start.Line + ":" + base.Message;
+            }
+        }
+
+        /// <summary>
+        /// <inheritdoc/>
+        /// </summary>
         public override string Source
         {
             get

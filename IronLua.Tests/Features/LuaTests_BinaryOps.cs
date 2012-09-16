@@ -441,78 +441,78 @@ namespace IronLua.Tests.Features
             Assert.That(Run("return 6 <= 6"), Is.True);
         }
 
-        [Test, ExpectedException(typeof(LuaRuntimeException), 
-            ExpectedMessage = "attempt to compare nil with number")]
+        [Test, ExpectedException(typeof(LuaRuntimeException),
+            ExpectedMessage = "(chunk):1:attempt to compare nil with number")]
         public void TestBinary_LessThan_NilWithNumber()
         {
             engine.Execute("return nil < 6");
         }
 
         [Test, ExpectedException(typeof(LuaRuntimeException),
-            ExpectedMessage = "attempt to compare boolean with number")]
+            ExpectedMessage = "(chunk):1:attempt to compare boolean with number")]
         public void TestBinary_LessThan_FalseWithNumber()
         {
             engine.Execute("return false < 6");
         }
 
         [Test, ExpectedException(typeof(LuaRuntimeException),
-            ExpectedMessage = "attempt to compare boolean with number")]
+            ExpectedMessage = "(chunk):1:attempt to compare boolean with number")]
         public void TestBinary_LessThan_TrueWithNumber()
         {
             engine.Execute("return true < 6");
         }
 
         [Test, ExpectedException(typeof(LuaRuntimeException),
-            ExpectedMessage = "attempt to compare string with number")]
+            ExpectedMessage = "(chunk):1:attempt to compare string with number")]
         public void TestBinary_LessThan_StringWithNumber()
         {
             engine.Execute("return 'abc' < 6");
         }
 
         [Test, ExpectedException(typeof(LuaRuntimeException),
-            ExpectedMessage = "Attempt to compare table with number")]
+            ExpectedMessage = "(chunk):1:Attempt to compare table with number")]
         public void TestBinary_LessThan_TableWithNumber()
         {
             engine.Execute("return {} < 6");
         }
 
         [Test, ExpectedException(typeof(LuaRuntimeException),
-            ExpectedMessage = "attempt to compare function with number")]
+            ExpectedMessage = "(chunk):1:attempt to compare function with number")]
         public void TestBinary_LessThan_FunctionWithNumber()
         {
             engine.Execute("return function() end < 6");
         }
 
         [Test, ExpectedException(typeof(LuaRuntimeException),
-            ExpectedMessage = "attempt to compare string with nil")]
+            ExpectedMessage = "(chunk):1:attempt to compare string with nil")]
         public void TestBinary_LessThan_StringWithNil()
         {
             engine.Execute("return 'abc' < nil");
         }
 
         [Test, ExpectedException(typeof(LuaRuntimeException),
-            ExpectedMessage = "attempt to compare string with boolean")]
+            ExpectedMessage = "(chunk):1:attempt to compare string with boolean")]
         public void TestBinary_LessThan_StringWithFalse()
         {
             engine.Execute("return 'abc' < false");
         }
 
         [Test, ExpectedException(typeof(LuaRuntimeException),
-            ExpectedMessage = "attempt to compare string with boolean")]
+            ExpectedMessage = "(chunk):1:attempt to compare string with boolean")]
         public void TestBinary_LessThan_StringWithTrue()
         {
             engine.Execute("return 'abc' < true");
         }
 
         [Test, ExpectedException(typeof(LuaRuntimeException),
-            ExpectedMessage = "attempt to compare string with table")]
+            ExpectedMessage = "(chunk):1:attempt to compare string with table")]
         public void TestBinary_LessThan_StringWithTable()
         {
             engine.Execute("return 'abc' < {}");
         }
 
         [Test, ExpectedException(typeof(LuaRuntimeException),
-            ExpectedMessage = "attempt to compare string with function")]
+            ExpectedMessage = "(chunk):1:attempt to compare string with function")]
         public void TestBinary_LessThan_StringWithFunction()
         {
             engine.Execute("return 'abc' < function() end");

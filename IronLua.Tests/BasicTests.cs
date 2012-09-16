@@ -15,7 +15,7 @@ namespace IronLua.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(LuaRuntimeException), ExpectedMessage = "Assertion failed")]
+        [ExpectedException(typeof(LuaRuntimeException), ExpectedMessage = "(chunk):1:Assertion failed")]
         public void ExecuteAssertFalse()
         {
             Lua.CreateEngine().Execute("assert(false)");

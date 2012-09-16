@@ -28,7 +28,7 @@ namespace IronLua.Tests.Features
             Assert.That(error, Is.Empty);
         }
 
-        [Test, ExpectedException(ExpectedException = typeof(LuaErrorException), ExpectedMessage = "error message")]
+        [Test, ExpectedException(ExpectedException = typeof(LuaErrorException), ExpectedMessage = "(chunk):1:error message")]
         public void TestErrors_Throw()
         {
             engine.Execute("error('error message')");
@@ -65,7 +65,7 @@ return x";
             catch (LuaErrorException ex)
             {
                 Assert.That(ex.StackLevel == 1);
-                Assert.That(ex.Message == "error message");
+                Assert.That(ex.Message == "(chunk):1:error message");
                 Assert.That(ex.Result == "error message");
 
                 return;
@@ -95,7 +95,7 @@ f4()
             catch (LuaErrorException ex)
             {
                 Assert.That(ex.StackLevel == 1);
-                Assert.That(ex.Message == "error message");
+                Assert.That(ex.Message == "(chunk):2:error message");
                 Assert.That(ex.Result == "error message");
 
                 return;
