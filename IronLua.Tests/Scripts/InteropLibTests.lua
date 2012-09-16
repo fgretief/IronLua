@@ -34,13 +34,13 @@ for i=1,#array - 1 do
 end
 
 for v in clr.iterate(array) do
-	if not itterated then 
+	if not iterated then 
 		iterated = v
 	else
-		iterated = itterated..','..v
+		iterated = iterated..','..v
 	end
 end
-assert(iterated == '10,9,8,7,6,5,4,3,2,1', 'Array itteration failed, got '..itterated)
+assert(iterated == '10,9,8,7,6,5,4,3,2,1', 'Array itteration failed, got '..iterated)
 print('    Success')
 
 print('Attempting to import List<string>')
