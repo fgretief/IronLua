@@ -144,12 +144,41 @@ namespace IronLua.Library
             if (target is LuaTable)
             {
                 var type = (target as LuaTable).GetValue("__clrtype") as Type;
+
+                if (type.IsEnum)
+                    try
+                    {
+                        return Enum.Parse(type, BaseLibrary.ToStringEx(index));
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new LuaRuntimeException(Context, ex.Message, ex);
+                    }
+                
                 var members = type.GetMember(index.ToString(), BindingFlags.Static | BindingFlags.Public);
 
                 if (members.Any() && members.All(x => x.MemberType == MemberTypes.Field))
-                    return (members.First() as FieldInfo).GetValue(null);
+                    try
+                    {
+                        return (members.First() as FieldInfo).GetValue(null);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new LuaRuntimeException(Context, 
+                            string.Format("could not get field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.Type(type)), 
+                            ex);
+                    }
                 else if (members.Any() && members.All(x => x.MemberType == MemberTypes.Property))
-                    return (members.First() as PropertyInfo).GetValue(null, null);
+                    try
+                    {
+                        return (members.First() as PropertyInfo).GetValue(null, null);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new LuaRuntimeException(Context,
+                            string.Format("could not get property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.Type(type)),
+                            ex);
+                    }
                 else if (members.Any() && members.All(x => x.MemberType == MemberTypes.Method))
                     return new BoundMemberTracker(MemberTracker.FromMemberInfo(members.First()), target as LuaTable);
             }
@@ -179,9 +208,28 @@ namespace IronLua.Library
                 var members = type.GetMember(index.ToString(), BindingFlags.Instance | BindingFlags.Public);
 
                 if (members.Any() && members.All(x => x.MemberType == MemberTypes.Field))
-                    return (members.First() as FieldInfo).GetValue(target);
+                    try
+                    {
+                        return (members.First() as FieldInfo).GetValue(target);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new LuaRuntimeException(Context,
+                            string.Format("could not get field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
+                            ex);
+                    }
                 else if (members.Any() && members.All(x => x.MemberType == MemberTypes.Property))
-                    return (members.First() as PropertyInfo).GetValue(target, null);
+                    try
+                    {
+                        return (members.First() as PropertyInfo).GetValue(target, null);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new LuaRuntimeException(Context,
+                            string.Format("could not get property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
+                            ex);
+                    }
+
                 else if (members.Any() && members.All(x => x.MemberType == MemberTypes.Method))
                     return new BoundMemberTracker(MemberTracker.FromMemberInfo(members.First()), target);
             }
@@ -198,19 +246,46 @@ namespace IronLua.Library
 
                 if (members.Any() && members.All(x => x.MemberType == MemberTypes.Field))
                 {
-                    (members.First() as FieldInfo).SetValue(null, value);
-                    return value;
+                    try
+                    {
+                        (members.First() as FieldInfo).SetValue(null, value);
+                        return value;
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new LuaRuntimeException(Context,
+                            string.Format("could not set field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.Type(type)),
+                            ex);
+                    }
                 }
                 else if (members.Any() && members.All(x => x.MemberType == MemberTypes.Property))
                 {
-                    (members.First() as PropertyInfo).SetValue(null, value, null);
-                    return value;
+                    try
+                    {
+                        (members.First() as PropertyInfo).SetValue(null, value, null);
+                        return value;
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new LuaRuntimeException(Context,
+                            string.Format("could not set property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.Type(type)),
+                            ex);
+                    }
                 }
             }
             else if (target.GetType().IsArray)
             {
-                (target as Array).SetValue(Convert.ChangeType(value, target.GetType().GetElementType()), Convert.ToInt32(index));
-                return value;
+                try
+                {
+                    (target as Array).SetValue(Convert.ChangeType(value, target.GetType().GetElementType()), Convert.ToInt32(index));
+                    return value;
+                }
+                catch (Exception ex)
+                {
+                    throw new LuaRuntimeException(Context,
+                        string.Format("could not set indexed value for index '{0}' on array of type '{1}'", index.ToString(), BaseLibrary.Type(target.GetType().GetElementType())),
+                        ex);
+                }
             }
             else if (target.GetType().GetMethods().Any(x => x.Name.Equals("set_Item") && ParamsMatch(x, new[] { index.GetType() }) > 0))
             {
@@ -225,7 +300,9 @@ namespace IronLua.Library
                 }
                 catch (Exception ex)
                 {
-                    throw new LuaRuntimeException(Context, ex.Message, ex);
+                    throw new LuaRuntimeException(Context, 
+                        string.Format("could not set indexed value for index '{0}' on '{1}'", index.ToString(), BaseLibrary.Type(target.GetType().GetElementType())),
+                        ex);
                 }
             }
             else
@@ -235,13 +312,31 @@ namespace IronLua.Library
 
                 if (members.Any() && members.All(x => x.MemberType == MemberTypes.Field))
                 {
-                    (members.First() as FieldInfo).SetValue(target, value);
-                    return value;
+                    try
+                    {
+                        (members.First() as FieldInfo).SetValue(target, value);
+                        return value;
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new LuaRuntimeException(Context,
+                            string.Format("could not set field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
+                            ex);
+                    }
                 }
                 else if (members.Any() && members.All(x => x.MemberType == MemberTypes.Property))
                 {
-                    (members.First() as PropertyInfo).SetValue(target, value, null);
-                    return value;
+                    try
+                    {
+                        (members.First() as PropertyInfo).SetValue(target, value, null);
+                        return value;
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new LuaRuntimeException(Context,
+                            string.Format("could not set property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
+                            ex);
+                    }
                 }
             }
 
