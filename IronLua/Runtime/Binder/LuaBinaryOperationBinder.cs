@@ -99,7 +99,8 @@ namespace IronLua.Runtime.Binder
             }
 
             if (expression == null)
-                expression = MetamethodFallbacks.BinaryOp(context, Operation, target, arg);
+                expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.BinaryOp(context, Operation, target, arg), context,
+                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, LuaOps.GetMethodName(Operation)));
 
             return new DynamicMetaObject(Expr.Convert(expression, typeof(object)), 
                 RuntimeHelpers.MergeTypeRestrictions(target, arg));
@@ -188,12 +189,14 @@ namespace IronLua.Runtime.Binder
 
             var expr = Expr.Condition(
                 Expr.Invoke(Expr.Constant((Func<double, bool>)Double.IsNaN), conversionVar),
+                MetamethodFallbacks.WrapStackTrace(
                 Expr.Invoke(
                     Expr.Constant((Func<LuaContext, ExprType, object, object, object>)LuaOps.NumericMetamethod),
                     Expr.Constant(context),
                     Expr.Constant(Operation),
                     Expr.Convert(left.Expression, typeof(object)),
-                    Expr.Convert(right.Expression, typeof(object))),
+                    Expr.Convert(right.Expression, typeof(object))), context,
+                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, LuaOps.GetMethodName(Operation))),
                 Expr.Convert(conversionVar, typeof(object)));
 
             return Expr.Block(

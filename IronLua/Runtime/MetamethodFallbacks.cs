@@ -8,6 +8,21 @@ namespace IronLua.Runtime
 {
     static class MetamethodFallbacks
     {
+        public static Expr WrapStackTrace(Expr expr, LuaContext context, LuaTrace.FunctionCall callSite)
+        {
+            var tempVar = Expr.Variable(typeof(object), "$metamethod_result$");
+
+            return Expr.Block(
+                    new[] { tempVar },
+
+                    LuaTrace.MakePushFunctionCall(context, callSite),
+                    Expr.Assign(tempVar, expr),
+                    LuaTrace.MakePopFunctionCall(context),
+
+                    tempVar
+                );
+        }
+
         public static Expr BinaryOp(LuaContext context, ExprType operation, DynamicMetaObject left, DynamicMetaObject right)
         {
             return Expr.Invoke(

@@ -49,7 +49,8 @@ namespace IronLua.Runtime.Binder
                 return WrapToObject(Context.Binder.MakeCallExpression(DefaultOverloadResolver.Factory, method, args));
             }
 
-            var expression = MetamethodFallbacks.Index(_context, target, indexes);
+            var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.Index(_context, target, indexes), Context,
+                    new LuaTrace.FunctionCall(Context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.INDEX_METAMETHOD));
 
             return WrapToObject(new DynamicMetaObject(expression, BindingRestrictions.Empty));
             

@@ -264,7 +264,7 @@ namespace IronLua.Runtime
             return metamethodLeft != metamethodRight ? null : metamethodLeft;
         }
 
-        static string GetMethodName(ExprType op)
+        internal static string GetMethodName(ExprType op)
         {
             string methodName;
             return Constant.METAMETHODS.TryGetValue(op, out methodName) ? methodName : null;

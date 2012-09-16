@@ -20,6 +20,24 @@ namespace IronLua.Runtime
             CallStack = new Stack<FunctionCall>();
         }
 
+        #region Current File
+
+        public string CurrentDocument
+        { get; private set; }
+
+        public void UpdateCurrentDocument(SymbolDocumentInfo document)
+        {
+            CurrentDocument = document == null ? "(chunk)" : document.FileName;
+        }
+
+        private static readonly MethodInfo UpdateCurrentDocumentMethodInfo = typeof(LuaTrace).GetMethod("UpdateCurrentDocument");
+        public static Expression MakeUpdateCurrentDocument(LuaContext context, SymbolDocumentInfo document)
+        {
+            return Expression.Call(Expression.Constant(context.Trace), UpdateCurrentDocumentMethodInfo, Expression.Constant(document));
+        }
+
+        #endregion
+
         #region Current Source Span
 
         public SourceSpan CurrentSpan
@@ -42,19 +60,19 @@ namespace IronLua.Runtime
 
         public class FunctionCall
         {
-            public FunctionCall(SourceSpan functionLocation, FunctionType type, string identifier, SymbolDocumentInfo document = null)
+            public FunctionCall(SourceSpan functionLocation, FunctionType type, string identifier, string fileName = null)
             {
                 FunctionLocation = functionLocation;
                 Type = type;
-                Document = document ?? Expression.SymbolDocument("[CLR]");
+                FileName = fileName;
                 MethodName = identifier;
             }
 
-            public FunctionCall(SourceSpan functionLocation, FunctionType type, IEnumerable<string> identifiers, SymbolDocumentInfo document = null)
+            public FunctionCall(SourceSpan functionLocation, FunctionType type, IEnumerable<string> identifiers, string fileName = null)
             {
                 FunctionLocation = functionLocation;
                 Type = type;
-                Document = document ?? Expression.SymbolDocument("[CLR]");
+                FileName = fileName;
 
                 string temp = identifiers.First();
                 foreach (var i in identifiers.Skip(1))
@@ -63,7 +81,7 @@ namespace IronLua.Runtime
                 MethodName = temp;
             }
 
-            public SymbolDocumentInfo Document { get; private set; }
+            public string FileName { get; internal set; }
             public string MethodName { get; private set; }
             public SourceSpan FunctionLocation { get; private set; }
             public FunctionType Type { get; private set; }
@@ -73,7 +91,8 @@ namespace IronLua.Runtime
         {
             Lua,
             CLR,
-            Chunk
+            Chunk,
+            Invoke
         }
 
         public Stack<FunctionCall> CallStack
@@ -84,6 +103,8 @@ namespace IronLua.Runtime
 
         public static Expression MakePushFunctionCall(LuaContext context, FunctionCall call)
         {
+            if (call.FileName == null)
+                call.FileName = context.Trace.CurrentDocument;
             return Expression.Call(Expression.Constant(context.Trace.CallStack), PushCallStackMethodInfo, Expression.Constant(call));
         }
 
@@ -92,6 +113,50 @@ namespace IronLua.Runtime
             return Expression.Call(Expression.Constant(context.Trace.CallStack), PopCallStackMethodInfo);
         }
 
+        #endregion
+
+        #region Variable Access Stack
+
+        public enum AccessType
+        {
+            GlobalGet, GlobalSet,
+            LocalGet, LocalSet,
+            MemberGet, MemberSet,
+            IndexGet, IndexSet
+        }
+
+        public class VariableAccess
+        {
+            public VariableAccess(string identifier, AccessType operation)
+            {
+                VariableName = identifier;
+                Operation = operation;
+            }
+
+            public string VariableName
+            { get; private set; }
+            
+            public AccessType Operation
+            { get; private set; }
+
+            public object Value
+            { get; internal set; }
+        }
+
+        public VariableAccess LastVariableAccess
+        { get; private set; }
+
+        public void UpdateLastVariableAccess(VariableAccess variable, object value)
+        {
+            LastVariableAccess = variable;
+            LastVariableAccess.Value = value;
+        }
+
+        private static readonly MethodInfo UpdateLastVariableAccessMethodInfo = typeof(LuaTrace).GetMethod("UpdateLastVariableAccess");
+        public static Expression MakeUpdateLastVariableAccess(LuaContext context, VariableAccess variable, Expression value)
+        {
+            return Expression.Call(Expression.Constant(context.Trace), UpdateLastVariableAccessMethodInfo, Expression.Constant(variable), value);
+        }
         #endregion
 
         #region Current Scope

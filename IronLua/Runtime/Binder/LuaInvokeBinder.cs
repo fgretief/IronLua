@@ -37,7 +37,9 @@ namespace IronLua.Runtime.Binder
                 throw new LuaRuntimeException(context, "Attempt to invoke a nil object");
 
             if (!target.LimitType.IsSubclassOf(typeof(Delegate)) && target.LimitType != typeof(Varargs))
-                return new DynamicMetaObject(MetamethodFallbacks.Call(context, target, args), restrictions);
+                return new DynamicMetaObject(
+                    MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.Call(context, target, args), context,
+                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, context.Trace.LastVariableAccess.VariableName + "." + Constant.CALL_METAMETHOD)), restrictions);
             
 
 
@@ -117,8 +119,8 @@ namespace IronLua.Runtime.Binder
                 expr = Expr.Convert(invokeExpr, typeof(object));
 
             var tempVar = Expr.Variable(typeof(object), "$function_result$");
-            return Expr.Block(new [] {tempVar},
-                LuaTrace.MakePushFunctionCall(context, new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.CLR, BaseLibrary.ToStringEx(target.Value))),
+            return Expr.Block(new[] { tempVar },
+                LuaTrace.MakePushFunctionCall(context, new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Invoke,  context.Trace.LastVariableAccess.VariableName)),
                 Expr.Assign(tempVar, expr),
                 LuaTrace.MakePopFunctionCall(context),
                 tempVar);

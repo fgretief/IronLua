@@ -43,7 +43,7 @@ namespace IronLua
         public SourceSpan CurrentBlock
         { get { return Context == null ? SourceSpan.Invalid : Context.Trace.CurrentSpan; } }
 
-        public string GetCurrentCode()
+        public string GetCurrentLocation()
         {
             if (!CurrentBlock.IsValid)
                 return "invalid location";
@@ -130,6 +130,18 @@ namespace IronLua
                 stack.Pop();
         }
 
+        protected string FormatStackTrace(Exception ex)
+        {
+            string[] clrTrace = ex.StackTrace.Split('\n').Select(x => x.Trim().Remove(0, 2).Trim()).ToArray();
+
+            string stackTrace = "";
+            int clrIndex = clrTrace.Length - 1;
+            for (; clrIndex >= 0; clrIndex--)            
+                stackTrace = "[CLR]: " + clrTrace[clrIndex] + "\n" + stackTrace;
+
+            return stackTrace;
+        }
+
         /// <summary>
         /// Gets the stack trace representing the current function call stack
         /// </summary>
@@ -166,17 +178,68 @@ namespace IronLua
                     case LuaTrace.FunctionType.CLR:
                         inWhat = "CLR function '" + stack[i].MethodName + "'";
                         break;
+                    case LuaTrace.FunctionType.Invoke:
+                        continue;   //Don't print invoke calls as part of the stack trace
+                        //inWhat = "function call '" + stack[i].MethodName + "'";
+                        //break;
                 }
 
-                stackTrace = stack[i].Document.FileName + ":" + stack[i].FunctionLocation.Start.Line + ": in " + inWhat + "\n" + stackTrace;
+                stackTrace = stack[i].FileName + ":" + stack[i].FunctionLocation.Start.Line + ": in " + inWhat + "\n" + stackTrace;
             }
 
-            for (; clrIndex >= 0; clrIndex--)   
-                stackTrace = "[CLR]: " + clrTrace[clrIndex] + "\n" + stackTrace;
+            //for (; clrIndex >= 0; clrIndex--)   
+            //    stackTrace = "[CLR]: " + clrTrace[clrIndex] + "\n" + stackTrace;
+
+            Exception innerEx = InnerException;
+            while (innerEx != null)
+            {
+                stackTrace = FormatStackTrace(innerEx) + stackTrace;
+                innerEx = innerEx.InnerException;
+            }
 
             return stackTrace;
         }
 
+
+
+        /// <summary>
+        /// Gets the formatted list of invoked Lua expressions leading up to this error
+        /// </summary>
+        public IEnumerable<string> CallStack
+        {
+            get
+            {
+                LuaTrace.FunctionCall[] stack = new LuaTrace.FunctionCall[this.stack.Count];
+                this.stack.CopyTo(stack, 0);
+
+                for (int i = stack.Length - 1; i >= 0; i--)
+                {
+                    string inWhat = "";
+                    switch (stack[i].Type)
+                    {
+                        case LuaTrace.FunctionType.Lua:
+                            inWhat = "function '" + stack[i].MethodName + "'";
+                            break;
+                        case LuaTrace.FunctionType.Chunk:
+                            inWhat = "main chunk";
+                            break;
+                        case LuaTrace.FunctionType.CLR:
+                            inWhat = "CLR function '" + stack[i].MethodName + "'";
+                            break;
+                        case LuaTrace.FunctionType.Invoke:
+                            continue;   //Don't print invoke calls as part of the stack trace
+                        //inWhat = "function call '" + stack[i].MethodName + "'";
+                        //break;
+                    }
+
+                    yield return stack[i].FileName + ":" + stack[i].FunctionLocation.Start.Line + ": in " + inWhat;
+                }
+            }
+        }
+
+        /// <summary>
+        /// <inheritdoc/>
+        /// </summary>
         public override string Source
         {
             get
@@ -191,6 +254,9 @@ namespace IronLua
             }
         }
 
+        /// <summary>
+        /// <inheritdoc/>
+        /// </summary>
         public override string StackTrace
         {
             get
@@ -199,6 +265,9 @@ namespace IronLua
             }
         }
 
+        /// <summary>
+        /// <inheritdoc/>
+        /// </summary>
         public override string ToString()
         {
             return base.ToString();

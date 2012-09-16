@@ -47,7 +47,8 @@ namespace IronLua.Runtime.Binder
             var expr = LuaConvertBinder.ToNumber(target);
 
             if (expr == null)
-                return MetamethodFallbacks.UnaryMinus(context, target);
+                return MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.UnaryMinus(context, target), context,
+                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.UNARYMINUS_METAMETHOD));
 
             if (target.LimitType == typeof(string))
                 return FallbackIfNumberIsNan(expr);
@@ -71,11 +72,13 @@ namespace IronLua.Runtime.Binder
 
             var expr = Expr.IfThenElse(
                 Expr.Invoke(Expr.Constant((Func<double, bool>)Double.IsNaN), numVar),
+                MetamethodFallbacks.WrapStackTrace(
                 Expr.Invoke(
                     Expr.Constant((Func<LuaContext, object, object>)LuaOps.UnaryMinusMetamethod),
                     Expr.Constant(context),
                     Expr.Constant(Operation),
-                    Expr.Convert(numExpr, typeof(object))),
+                    Expr.Convert(numExpr, typeof(object))), context,
+                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.UNARYMINUS_METAMETHOD)),
                 numVar);
 
             return Expr.Block(

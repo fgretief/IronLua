@@ -29,11 +29,14 @@ namespace IronLua.Runtime.Binder
             Array.Copy(args.Select(a => a.Expression).ToArray(), 0, combinedArgs, 1, args.Length);
 
             var restrictions = target.Restrictions.Merge(BindingRestrictions.Combine(args));
-            var expression =
+            Expr expression =
                 Expr.Dynamic(
                     context.CreateInvokeBinder(new CallInfo(args.Length)),
                     typeof(object),
                     combinedArgs);
+
+            expression = MetamethodFallbacks.WrapStackTrace(expression, context,
+                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Name));
 
             return new DynamicMetaObject(expression, restrictions);
         }

@@ -68,7 +68,8 @@ namespace IronLua.Compiler
             var blockExpr = Visit(block);
 
             var expr = Expr.Block(
-                LuaTrace.MakePushFunctionCall(context, new LuaTrace.FunctionCall(block.Span, LuaTrace.FunctionType.Chunk, "main chunk", _document)),
+                LuaTrace.MakeUpdateCurrentDocument(context, _document),
+                LuaTrace.MakePushFunctionCall(context, new LuaTrace.FunctionCall(block.Span, LuaTrace.FunctionType.Chunk, "main chunk", _document.FileName)),
                 blockExpr,                 
                 LuaTrace.MakePopFunctionCall(context),
                 Expr.Label(scope.GetReturnLabel(), Expr.Constant(null)));
@@ -84,7 +85,11 @@ namespace IronLua.Compiler
             scope = evaluationScope;
 
             var blockExpr = Visit(block);
-            var expr = Expr.Block(new[] { dlrGlobals }, Expr.Assign(dlrGlobals, Expr.Constant(runtimeScope)), blockExpr, Expr.Label(scope.GetReturnLabel(), Expr.Constant(null)));
+            var expr = Expr.Block(new[] { dlrGlobals }, 
+                Expr.Assign(dlrGlobals, Expr.Constant(runtimeScope)), 
+                blockExpr, 
+                Expr.Label(scope.GetReturnLabel(), 
+                Expr.Constant(null)));
 
             return Expr.Lambda<Func<dynamic>>(expr);
         }
@@ -151,7 +156,7 @@ namespace IronLua.Compiler
                 return Expr.Lambda(
                     Expr.Block(
                     new[] { funcResult },
-                        LuaTrace.MakePushFunctionCall(context, new LuaTrace.FunctionCall(function.Span, LuaTrace.FunctionType.Lua, name.Identifiers, _document)),
+                        LuaTrace.MakePushFunctionCall(context, new LuaTrace.FunctionCall(function.Span, LuaTrace.FunctionType.Lua, name.Identifiers, _document.FileName)),
                         Expr.Assign(funcResult, bodyExpr),
                         LuaTrace.MakePopFunctionCall(context),
                         funcResult
@@ -596,6 +601,7 @@ namespace IronLua.Compiler
                     Expr.TryCatch(Expr.Assign(temp, Expr.Dynamic(context.CreateGetMemberBinder(identifier, false),
                                     typeof(object), Expr.Constant(globals))),
                                     Expr.Catch(Expr.Parameter(typeof(Exception)), Expr.Constant(null))),
+                    LuaTrace.MakeUpdateLastVariableAccess(context, new LuaTrace.VariableAccess(identifier, LuaTrace.AccessType.GlobalSet), temp),
                     temp);
 
 
@@ -606,7 +612,10 @@ namespace IronLua.Compiler
                     Expr.TryCatch(Expr.Assign(temp, Expr.Dynamic(context.CreateGetMemberBinder(identifier, false),
                                     typeof(object), scope.GetDlrGlobals())),
                                     Expr.Catch(Expr.Parameter(typeof(Exception)), Expr.Constant(null))),
+                    LuaTrace.MakeUpdateLastVariableAccess(context, new LuaTrace.VariableAccess(identifier, LuaTrace.AccessType.GlobalSet), temp),
                     temp);
+
+            
         }
 
         Expr IPrefixExpressionVisitor<Expr>.Visit(PrefixExpression.Variable prefixExpr)
@@ -617,7 +626,7 @@ namespace IronLua.Compiler
                 case VariableType.Identifier:
                     ParamExpr local;
                     if (scope.TryGetLocal(variable.Identifier, out local))
-                        return local;
+                        return WrapVariableAccess(local, new LuaTrace.VariableAccess(variable.Identifier, LuaTrace.AccessType.LocalGet));
 
                     return CreateGlobalGetMember(variable.Identifier, context.Globals, scope);
                     
@@ -628,12 +637,12 @@ namespace IronLua.Compiler
                     //                    typeof(object), scope.GetDlrGlobals());
 
                 case VariableType.MemberId:
-                    return Expr.Dynamic(context.CreateGetMemberBinder(variable.Identifier, false),
-                                        typeof(object), variable.Object);
+                    return WrapVariableAccess(Expr.Dynamic(context.CreateGetMemberBinder(variable.Identifier, false),
+                                        typeof(object), variable.Object), new LuaTrace.VariableAccess(variable.Identifier, LuaTrace.AccessType.MemberGet));
 
                 case VariableType.MemberExpr:
-                    return Expr.Dynamic(context.CreateGetIndexBinder(new CallInfo(1)),
-                                        typeof(object), variable.Object, variable.Member);
+                    return WrapVariableAccess(Expr.Dynamic(context.CreateGetIndexBinder(new CallInfo(1)),
+                                        typeof(object), variable.Object, variable.Member), new LuaTrace.VariableAccess(variable.Identifier, LuaTrace.AccessType.IndexGet));
 
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -725,6 +734,16 @@ namespace IronLua.Compiler
             return Expr.Block(tempVariables, Microsoft.Scripting.Utils.CollectionUtils.Concat(tempAssigns, realAssigns));
         }
 
+        Expr WrapVariableAccess(Expr expression, LuaTrace.VariableAccess access)
+        {
+            var tempStorage = Expr.Variable(typeof(object), "$variable_value$");
+            return Expr.Block(new [] { tempStorage },
+                    Expr.Assign(tempStorage, expression),
+                    LuaTrace.MakeUpdateLastVariableAccess(context, access, tempStorage),
+                    tempStorage
+                );
+        }
+
         Expr CreateGlobalSetMember(string identifier, Expr globals, LuaScope scope, Expr value)
         {
             var scopeAssign = Expr.Dynamic(context.CreateSetMemberBinder(identifier, false),
@@ -733,7 +752,9 @@ namespace IronLua.Compiler
             var scopeDelete = Expr.TryCatch(Expr.Dynamic(context.CreateDeleteMemberBinder(identifier, false),
                                     typeof(void), scope.GetDlrGlobals()), Expr.Catch(Expr.Parameter(typeof(Exception)), Expr.Empty()));
 
-            return Expr.Condition(Expr.Equal(value, Expr.Constant(null)), Expr.Block(scopeDelete, Expr.Constant(null)), scopeAssign);
+            var exp = Expr.Condition(Expr.Equal(value, Expr.Constant(null)), Expr.Block(scopeDelete, Expr.Constant(null)), scopeAssign);
+
+            return WrapVariableAccess(exp, new LuaTrace.VariableAccess(identifier, LuaTrace.AccessType.GlobalSet));
         }
 
         Expr Assign(VariableVisit variable, Expr value)
@@ -743,7 +764,7 @@ namespace IronLua.Compiler
                 case VariableType.Identifier:
                     ParamExpr local;
                     if (scope.TryGetLocal(variable.Identifier, out local))
-                        return Expr.Assign(local, value);
+                        return WrapVariableAccess(Expr.Assign(local, value), new LuaTrace.VariableAccess(variable.Identifier, LuaTrace.AccessType.LocalSet));
 
 
                     return CreateGlobalSetMember(variable.Identifier, Expr.Constant(context.Globals), scope, value);
@@ -755,12 +776,13 @@ namespace IronLua.Compiler
                     //                    typeof(object), scope.GetDlrGlobals(), value);
 
                 case VariableType.MemberId:
-                    return Expr.Dynamic(context.CreateSetMemberBinder(variable.Identifier, false),
-                                        typeof(object), variable.Object, value);
+                    return WrapVariableAccess(Expr.Dynamic(context.CreateSetMemberBinder(variable.Identifier, false),
+                                        typeof(object), variable.Object, value), new LuaTrace.VariableAccess(variable.Identifier, LuaTrace.AccessType.MemberSet));
 
                 case VariableType.MemberExpr:
-                    return Expr.Dynamic(context.CreateSetIndexBinder(new CallInfo(1)),
-                                        typeof(object), variable.Object, variable.Member, value);
+                    return WrapVariableAccess(Expr.Dynamic(context.CreateSetIndexBinder(new CallInfo(1)),
+                                        typeof(object), variable.Object, variable.Member, value), 
+                                        new LuaTrace.VariableAccess(variable.Identifier, LuaTrace.AccessType.IndexSet));
 
                 default:
                     throw new ArgumentOutOfRangeException();

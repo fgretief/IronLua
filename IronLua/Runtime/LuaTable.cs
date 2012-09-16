@@ -304,7 +304,9 @@ namespace IronLua.Runtime
                 if (!LuaBinaryOperationBinder.BinaryExprTypes.ContainsKey(binder.Operation))
                     throw new LuaRuntimeException(Context, "operation {0} not defined for table", binder.Operation.ToString());
 
-                var expression = MetamethodFallbacks.BinaryOp(Context, binder.Operation, this, arg);
+                var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.BinaryOp(Context, binder.Operation, this, arg), Context, 
+                    new LuaTrace.FunctionCall(Context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, LuaOps.GetMethodName(binder.Operation)));
+
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
             }
 
@@ -313,13 +315,16 @@ namespace IronLua.Runtime
                 if (binder.Operation != ExprType.Negate)
                     throw new LuaRuntimeException(Context, "operation {0} not defined for table", binder.Operation.ToString());
 
-                var expression = MetamethodFallbacks.UnaryMinus(Context, this);
+                var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.UnaryMinus(Context, this), Context,
+                    new LuaTrace.FunctionCall(Context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, LuaOps.GetMethodName(binder.Operation)));
+
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
             }
 
             public override DynamicMetaObject BindInvoke(InvokeBinder binder, DynamicMetaObject[] args)
             {
-                var expression = MetamethodFallbacks.Call(Context, this, args);
+                var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.Call(Context, this, args), Context,
+                    new LuaTrace.FunctionCall(Context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.CALL_METAMETHOD));
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
             }
 
@@ -351,7 +356,10 @@ namespace IronLua.Runtime
                     valueAssign,
                     Expr.Condition(
                         Expr.Equal(valueVar, Expr.Constant(null)),
-                        MetamethodFallbacks.Index(Context, this, new []{ new DynamicMetaObject(Expr.Constant(binder.Name), BindingRestrictions.Empty, binder.Name) }),
+                        
+                        MetamethodFallbacks.WrapStackTrace(
+                            MetamethodFallbacks.Index(Context, this, new[] { new DynamicMetaObject(Expr.Constant(binder.Name), BindingRestrictions.Empty, binder.Name) }), Context,
+                            new LuaTrace.FunctionCall(Context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.INDEX_METAMETHOD)),
                         valueVar));
 
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
@@ -380,7 +388,9 @@ namespace IronLua.Runtime
 
                 var expression = Expr.Condition(
                     Expr.Equal(getValue, Expr.Constant(null)),
-                    MetamethodFallbacks.NewIndex(Context, this, new[] { new DynamicMetaObject(Expr.Constant(binder.Name), BindingRestrictions.Empty, binder.Name) }, value),
+                    MetamethodFallbacks.WrapStackTrace(
+                        MetamethodFallbacks.NewIndex(Context, this, new[] { new DynamicMetaObject(Expr.Constant(binder.Name), BindingRestrictions.Empty, binder.Name) }, value), Context,
+                        new LuaTrace.FunctionCall(Context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.INDEX_METAMETHOD)),
                     setValue);
 
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
@@ -401,7 +411,9 @@ namespace IronLua.Runtime
                     valueAssign,
                     Expr.Condition(
                         Expr.Equal(valueVar, Expr.Constant(null)),
-                        MetamethodFallbacks.Index(Context, this, indexes),
+                        MetamethodFallbacks.WrapStackTrace(
+                            MetamethodFallbacks.Index(Context, this, indexes), Context,
+                            new LuaTrace.FunctionCall(Context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.INDEX_METAMETHOD)),
                         valueVar));
 
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
@@ -422,7 +434,9 @@ namespace IronLua.Runtime
 
                 var expression = Expr.Condition(
                     Expr.Equal(getValue, Expr.Constant(null)),
-                    MetamethodFallbacks.NewIndex(Context, this, indexes, value),
+                    MetamethodFallbacks.WrapStackTrace(
+                        MetamethodFallbacks.NewIndex(Context, this, indexes, value), Context,
+                        new LuaTrace.FunctionCall(Context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.INDEX_METAMETHOD)),
                     setValue);
 
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
