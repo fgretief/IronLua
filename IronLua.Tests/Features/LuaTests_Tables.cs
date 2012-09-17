@@ -39,7 +39,7 @@ namespace IronLua.Tests.Features
 
         public object PerformTableTest(string code)
         {
-            var scope = engine.CreateScope();
+            var scope = engine.CreateLuaScope();
 
             string output, error;
             dynamic result = engine.ExecuteTestCode(code, scope, out output, out error);
@@ -58,7 +58,7 @@ namespace IronLua.Tests.Features
         {
             string code = @"local t = {}";
 
-            var scope = engine.CreateScope();
+            var scope = engine.CreateLuaScope();
 
             string output, error;
             dynamic result = engine.CaptureOutput(e => e.Execute(code, scope), out output, out error);

@@ -125,6 +125,54 @@ namespace IronLua.Runtime
             // TODO: not implemented yet
             return base.CreateCreateBinder(callInfo);
         }
+        
+        #endregion
+
+        #region Scope Operations Support
+
+        public override bool ScopeTryGetVariable(Scope scope, string name, out dynamic value)
+        {
+            if (scope.Storage is LuaTable)
+            {
+                dynamic storage = scope.Storage;
+                value = storage[name];
+                return (object)value != null;
+            }
+            
+            return base.ScopeTryGetVariable(scope, name, out value);
+        }
+
+        public override dynamic ScopeGetVariable(Scope scope, string name)
+        {
+            if (scope.Storage is LuaTable)
+            {
+                dynamic storage = scope.Storage;
+                return storage[name];
+            }
+            return base.ScopeGetVariable(scope, name);
+        }
+        
+        public override T ScopeGetVariable<T>(Scope scope, string name)
+        {
+            if (scope.Storage is LuaTable)
+            {
+                dynamic storage = scope.Storage;
+                return storage[name];
+            }
+            return base.ScopeGetVariable<T>(scope, name);
+        }
+
+        public override void ScopeSetVariable(Scope scope, string name, object value)
+        {
+            if (scope.Storage is LuaTable)
+            {
+                dynamic storage = scope.Storage;
+                storage[name] = value;
+                return;
+            }
+
+            base.ScopeSetVariable(scope, name, value);
+        }
 
         #endregion
 
@@ -387,7 +435,7 @@ namespace IronLua.Runtime
         {
             return BaseLibrary.ToStringEx(obj);
         }
-
+        
         #region Lua base library management
 
         LuaTable SetupLibraries(LuaTable globals)
