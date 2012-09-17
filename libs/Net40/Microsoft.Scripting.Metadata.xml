@@ -4,32 +4,14 @@
         <name>Microsoft.Scripting.Metadata</name>
     </assembly>
     <members>
-        <member name="T:Microsoft.Scripting.Metadata.MemoryBlock">
+        <member name="M:Microsoft.Scripting.Metadata.MetadataToken.#ctor(System.Int32)">
             <summary>
-            Represents a block in memory.
+            We need to be able to construct tokens out of byte-code.
             </summary>
         </member>
-        <member name="T:Microsoft.Scripting.Metadata.MemoryReader">
+        <member name="P:Microsoft.Scripting.Metadata.MetadataRecord.IsValid">
             <summary>
-            Reads data from a memory block. Maintains a position.
-            </summary>
-        </member>
-        <member name="M:Microsoft.Scripting.Metadata.MemoryReader.ReadAscii(System.Int32)">
-            <summary>
-            Reads zero terminated sequence of bytes of given maximal length and converts it into an ASCII string.
-            </summary>
-        </member>
-        <member name="T:Microsoft.Scripting.Metadata.MetadataName">
-            <summary>
-            Zero terminated, UTF8 encoded sequence of bytes representing a name in metadata (a type name, a member name, etc).
-            The name is bound to the module it was retrieved from. The module is kept alive until all its metadata names are collected.
-            Doesn't cache hashcode, byte or character count.
-            </summary>
-        </member>
-        <member name="P:Microsoft.Scripting.Metadata.MetadataTables.Module">
-            <summary>
-            Gets the module whose metadata tables this instance represents.
-            Null if the tables reflect unloaded module file.
+            Token is null or represents a row in a metadata table.
             </summary>
         </member>
         <member name="P:Microsoft.Scripting.Metadata.MetadataTables.Path">
@@ -44,9 +26,10 @@
             Returns AssemblyDef for manifest modules, null token otherwise.
             </summary>
         </member>
-        <member name="P:Microsoft.Scripting.Metadata.MetadataRecord.IsValid">
+        <member name="P:Microsoft.Scripting.Metadata.MetadataTables.Module">
             <summary>
-            Token is null or represents a row in a metadata table.
+            Gets the module whose metadata tables this instance represents.
+            Null if the tables reflect unloaded module file.
             </summary>
         </member>
         <member name="M:Microsoft.Scripting.Metadata.MetadataTableView.GetCount">
@@ -97,14 +80,14 @@
             O(log(#generic parameters in module))
             </summary>
         </member>
-        <member name="P:Microsoft.Scripting.Metadata.TypeDef.Attributes">
-            <summary>
-            Flags field in TypeDef table.
-            </summary>
-        </member>
         <member name="P:Microsoft.Scripting.Metadata.TypeDef.IsGlobal">
             <summary>
             This typedef represents a container of global functions and fields (manufactured &lt;Module&gt; type).
+            </summary>
+        </member>
+        <member name="P:Microsoft.Scripting.Metadata.TypeDef.Attributes">
+            <summary>
+            Flags field in TypeDef table.
             </summary>
         </member>
         <member name="T:Microsoft.Scripting.Metadata.FieldDef">
@@ -364,9 +347,26 @@
             MethodDef or MethodRef.
             </summary>
         </member>
-        <member name="M:Microsoft.Scripting.Metadata.MetadataToken.#ctor(System.Int32)">
+        <member name="T:Microsoft.Scripting.Metadata.MetadataName">
             <summary>
-            We need to be able to construct tokens out of byte-code.
+            Zero terminated, UTF8 encoded sequence of bytes representing a name in metadata (a type name, a member name, etc).
+            The name is bound to the module it was retrieved from. The module is kept alive until all its metadata names are collected.
+            Doesn't cache hashcode, byte or character count.
+            </summary>
+        </member>
+        <member name="T:Microsoft.Scripting.Metadata.MemoryReader">
+            <summary>
+            Reads data from a memory block. Maintains a position.
+            </summary>
+        </member>
+        <member name="M:Microsoft.Scripting.Metadata.MemoryReader.ReadAscii(System.Int32)">
+            <summary>
+            Reads zero terminated sequence of bytes of given maximal length and converts it into an ASCII string.
+            </summary>
+        </member>
+        <member name="T:Microsoft.Scripting.Metadata.MemoryBlock">
+            <summary>
+            Represents a block in memory.
             </summary>
         </member>
     </members>
