@@ -69,7 +69,7 @@ assert(System.Math.Pow(10,2) == 100)
 assert(System.Math['Pow'](10,2) == 100)
 ";
 
-            var scope = engine.CreateLuaScope();
+            var scope = engine.CreateScope();
             var context = engine.GetLuaContext();
 
             engine.Execute(code, scope);
@@ -164,7 +164,7 @@ assert(tc1.Property == 12)
 assert(methodResult == 'this is a string:12')
 ";
 
-            var scope = engine.CreateLuaScope();
+            var scope = engine.CreateScope();
 
             engine.Execute(code, scope);
         }

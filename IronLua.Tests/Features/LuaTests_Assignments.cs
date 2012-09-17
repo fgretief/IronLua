@@ -23,7 +23,7 @@ namespace IronLua.Tests.Features
 
         public ScriptScope PerformTest(string code, StringBuilder expect)
         {
-            var scope = engine.CreateLuaScope();
+            var scope = engine.CreateScope();
 
             string output, error;
             dynamic result = engine.ExecuteTestCode(code, scope, out output, out error);
@@ -37,7 +37,7 @@ namespace IronLua.Tests.Features
 
         public ScriptScope PerformVariableTest(string code, params string[] varNames)
         {
-            var scope = engine.CreateLuaScope();
+            var scope = engine.CreateScope();
 
             string output, error;
             dynamic result = engine.ExecuteTestCode(code, scope, out output, out error);

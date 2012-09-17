@@ -98,7 +98,7 @@ namespace IronLua.Tests
         public void ScopeTest01()
         {
             var engine = Lua.CreateEngine();
-            var scope = engine.CreateLuaScope();
+            var scope = engine.CreateScope();
 
             scope.SetVariable("a", 42);
             object a = scope.GetVariable("a");
@@ -110,7 +110,7 @@ namespace IronLua.Tests
         public void ScopeTest02()
         {
             var engine = Lua.CreateEngine();
-            var scope = engine.CreateLuaScope();
+            var scope = engine.CreateScope();
 
             engine.Execute("a = 42", scope);
             object a = scope.GetVariable("a");
@@ -121,7 +121,7 @@ namespace IronLua.Tests
         public void ScopeTest03()
         {
             var engine = Lua.CreateEngine();
-            var scope = engine.CreateLuaScope();
+            var scope = engine.CreateScope();
 
             scope.SetVariable("a", 42);
             engine.Execute("assert(a == 42)", scope);

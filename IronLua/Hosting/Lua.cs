@@ -112,24 +112,5 @@ namespace IronLua.Hosting
         {
             return HostingHelpers.GetLanguageContext(engine) as LuaContext;
         }
-
-        /// <summary>
-        /// Gets a <see cref="ScriptScope"/> which uses a <see cref="LuaTable"/> as the
-        /// backing store. This allows the use of metamethod overrides for standard scope functions.
-        /// </summary>
-        /// <param name="engine">
-        /// The <see cref="ScriptEngine"/> hosting the Lua runtime
-        /// </param>
-        /// <returns>Returns a <see cref="ScriptScope"/> which uses a <see cref="LuaTable"/> as the backing store</returns>
-        public static ScriptScope CreateLuaScope(this ScriptEngine engine)
-        {
-            var table = new LuaTable(GetLuaContext(engine));
-            table.SetValue("_G", table);
-
-            var scope = engine.CreateScope(table);
-            scope.SetVariable("_G", table);
-
-            return scope;
-        }
     }
 }

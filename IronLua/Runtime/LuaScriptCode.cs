@@ -4,6 +4,7 @@ using System.Dynamic;
 using System.Linq.Expressions;
 using Microsoft.Scripting;
 using Microsoft.Scripting.Runtime;
+using IronLua.Hosting;
 
 namespace IronLua.Runtime
 {
