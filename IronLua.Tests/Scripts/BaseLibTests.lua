@@ -12,7 +12,8 @@ assert(type(f) == 'function')
 assert(type({}) == 'table')
 t = { 1, 2, 3 }
 assert(type(t) == 'table')
-assert(type(_G) == 'table')
+assert(_G, '_G not defined')
+assert(type(_G) == 'table','_G not defined correctly')
 
 -- tonumber
 assert(tonumber("1.25") == 1.25)

@@ -33,7 +33,7 @@ namespace IronLua.Runtime
 
             _binder = new LuaBinder(this);
             _dynamicCache = new DynamicCache(this);
-            _globals = SetupLibraries(new LuaTable(this));
+            _globals = new LuaTable(this);
             _trace = new LuaTrace(this);
             _metatables = SetupMetatables();
         }
@@ -174,13 +174,13 @@ namespace IronLua.Runtime
             base.ScopeSetVariable(scope, name, value);
         }
 
+        /// <inheritdoc/>
         public override Scope CreateScope()
         {
             var table = new LuaTable(this);
-            table.SetValue("_G", table);
+            SetupLibraries(table);
 
             var scope = new Scope(table);
-            ScopeSetVariable(scope, "_G", table);
 
             return scope;
         }
