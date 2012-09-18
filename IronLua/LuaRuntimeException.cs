@@ -203,12 +203,12 @@ namespace IronLua
 
         public IEnumerable<string> AccessibleVariables
         {
-            get { return Context.Trace.AccessibleVariables.Select(x => x.Key); }
+            get { return Context.Trace.AccessibleVariables.Reverse().Select(x => x.Key); }
         }
 
         public IEnumerable<object> GetVariableValues(string identifier)
         {
-            return Context.Trace.AccessibleVariables.Where(x => x.Key == identifier).Select(x => x.Value);
+            return Context.Trace.AccessibleVariables.Reverse().Where(x => x.Key == identifier).Select(x => x.Value);
         }
         
 

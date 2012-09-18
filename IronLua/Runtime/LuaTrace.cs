@@ -85,8 +85,6 @@ namespace IronLua.Runtime
             public string MethodName { get; private set; }
             public SourceSpan FunctionLocation { get; private set; }
             public FunctionType Type { get; private set; }
-
-            internal int variableStackLength = 0;
         }
 
         public enum FunctionType
@@ -107,25 +105,12 @@ namespace IronLua.Runtime
         {
             if (call.FileName == null || call.FileName.Length == 0)
                 call.FileName = CurrentDocument;
-            call.variableStackLength = variableAccessStack.Count;
             CallStack.Push(call);
         }
 
         public void PopFunctionCall()
         {
             var call = CallStack.Pop();
-            int expectedLength = call.variableStackLength;
-
-            Stack<VariableAccess> globalSets = new Stack<VariableAccess>();
-            while (variableAccessStack.Count > call.variableStackLength)
-            {
-                var access = variableAccessStack.Pop();
-                if (access.Operation == AccessType.GlobalSet)
-                    globalSets.Push(access);
-            }
-
-            while (globalSets.Count > 0)
-                variableAccessStack.Push(globalSets.Pop());
         }
 
         public static Expression MakePushFunctionCall(LuaContext context, FunctionCall call)
@@ -170,8 +155,15 @@ namespace IronLua.Runtime
 
         private Stack<VariableAccess> variableAccessStack = new Stack<VariableAccess>();
 
+        //Holds a scope-depth stack of the expected sizes for the variable access stack
+        private Stack<int> accessStackExpectedSize = new Stack<int>();
+        
+        //Holds the number of global variables defined within scopes, 
+        //thus offsetting the expected variable access stack size by this value
+        private int accessStackSizeOffset = 0;
+
         public VariableAccess LastVariableAccess
-        { get { return variableAccessStack.Peek(); } }
+        { get { return variableAccessStack.Count > 0 ? variableAccessStack.Peek() : null; } }
 
         public string CurrentVariableIdentifier
         {
@@ -204,7 +196,7 @@ namespace IronLua.Runtime
         }
 
         public void UpdateLastVariableAccess(VariableAccess variable, object value)
-        {
+        {            
             variableAccessStack.Push(variable);
             LastVariableAccess.Value = value;
         }
@@ -228,6 +220,87 @@ namespace IronLua.Runtime
                             break;
                     }
             }
+        }
+
+        private static readonly MethodInfo OnScopeEnterMethodInfo = typeof(LuaTrace).GetMethod("OnScopeEnter");
+        private static readonly MethodInfo OnScopeLeaveMethodInfo = typeof(LuaTrace).GetMethod("OnScopeLeave");
+        public void OnScopeEnter()
+        {
+            accessStackExpectedSize.Push(variableAccessStack.Count);
+        }
+
+        public void OnScopeLeave()
+        {
+            var expectedSize = accessStackExpectedSize.Pop();
+
+            Stack<VariableAccess> backup = new Stack<VariableAccess>();
+            while (variableAccessStack.Count > expectedSize + accessStackSizeOffset)
+            {
+                switch(GetRootOperation())
+                {
+                    case AccessType.GlobalGet:
+                    case AccessType.GlobalSet:
+                        RemoveTopOperation(backup);
+                        break;
+                    default:
+                        RemoveTopOperation();
+                        break;
+                }
+            }
+
+            while (backup.Count > 0)
+                variableAccessStack.Push(backup.Pop());
+        }
+
+        private AccessType GetRootOperation()
+        {
+            Stack<VariableAccess> backup = new Stack<VariableAccess>(variableAccessStack.Reverse());
+            while (backup.Count > 0)
+            {
+                var v = backup.Pop();
+                switch(v.Operation)
+                {
+                    case AccessType.GlobalSet:
+                    case AccessType.GlobalGet:
+                    case AccessType.LocalGet:
+                    case AccessType.LocalSet:
+                        return v.Operation;
+                    default: continue;
+                }
+            }
+
+            throw new LuaRuntimeException(_context, "No variables have been accessed yet");
+        }
+
+        private void RemoveTopOperation(Stack<VariableAccess> store = null)
+        {
+            while (variableAccessStack.Count > 0)
+            {
+                var v = variableAccessStack.Pop();
+                if (store != null)
+                    store.Push(v);
+                switch (v.Operation)
+                {
+                    case AccessType.GlobalSet:
+                    case AccessType.GlobalGet:
+                    case AccessType.LocalGet:
+                    case AccessType.LocalSet:
+                        return;
+                    default: continue;
+                }
+            }
+
+            throw new LuaRuntimeException(_context, "No variables have been accessed yet");
+        }
+
+        public static Expression MakeOnScopeEnter(LuaContext context)
+        {
+            return Expression.Call(Expression.Constant(context.Trace), OnScopeEnterMethodInfo);
+        }
+
+        public static Expression MakeOnScopeLeave(LuaContext context)
+        {
+            return Expression.Call(Expression.Constant(context.Trace), OnScopeLeaveMethodInfo);
         }
 
         #endregion

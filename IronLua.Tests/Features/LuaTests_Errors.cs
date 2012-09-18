@@ -3,6 +3,7 @@ using System.Text;
 using IronLua.Hosting;
 using Microsoft.Scripting.Hosting;
 using NUnit.Framework;
+using System.Linq;
 
 namespace IronLua.Tests.Features
 {
@@ -102,6 +103,50 @@ f4()
             }
 
             Assert.Fail();
+        }
+
+        [Test]
+        public void TestErrors_AccessibleVariables()
+        {
+            string code = 
+@"a = 10
+a = 11
+local b = 20
+
+function f1() 
+    c = 30 
+    local d = 40 
+    do 
+        local e = 50 
+    end 
+    error('Break') 
+end
+
+f1()";
+
+            try
+            {
+                engine.Execute(code);
+            }
+            catch (LuaErrorException ex)
+            {
+                Assert.That(ex.Result, Is.EqualTo("Break"));
+                Assert.That(ex.AccessibleVariables.Count() > 0);
+
+                //Check that the right variables are present
+                Assert.That(ex.AccessibleVariables.Any(x => x == "a"));
+                Assert.That(ex.AccessibleVariables.Any(x => x == "b"));
+                Assert.That(ex.AccessibleVariables.Any(x => x == "c"));
+                Assert.That(ex.AccessibleVariables.Any(x => x == "d"));
+                Assert.That(ex.AccessibleVariables.Any(x => x == "e"), Is.False);
+
+                //Check that their values are correct
+                Assert.That(ex.GetVariableValues("a").First(), Is.EqualTo(10));
+                Assert.That(ex.GetVariableValues("a").Last(), Is.EqualTo(11));
+                Assert.That(ex.GetVariableValues("b").First(), Is.EqualTo(20));
+                Assert.That(ex.GetVariableValues("c").First(), Is.EqualTo(30));
+                Assert.That(ex.GetVariableValues("d").First(), Is.EqualTo(40));
+            }
         }
     }
 }

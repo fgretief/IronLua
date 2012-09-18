@@ -104,6 +104,7 @@ namespace IronLua.Compiler
                 var statementExprs = new List<Expr>();
 
                 statementExprs.Add(LuaTrace.MakeUpdateCurrentEvaluationScope(context, scope));
+                statementExprs.Add(LuaTrace.MakeOnScopeEnter(context));
 
                 if (block.Statements.Count > 0)
                 {
@@ -116,13 +117,14 @@ namespace IronLua.Compiler
                     statementExprs.AddRange(block.Statements.Select(s => s.Visit(this)));
                 }
 
+                statementExprs.Add(LuaTrace.MakeOnScopeLeave(context));
                 statementExprs.Add(LuaTrace.MakeUpdateCurrentEvaluationScope(context, parentScope));
 
-                if (statementExprs.Count == 2)
+                if (statementExprs.Count == 4)
                     return Expr.Constant(null);
-                else if (statementExprs.Count == (_document == null ? 3 : 4) && scope.LocalsCount == 0)
+                else if (statementExprs.Count == (_document == null ? 5 : 6) && scope.LocalsCount == 0)
                     // Don't output blocks if we don't declare any locals and it's a single statement
-                    return statementExprs[(_document == null ? 1 : 2)];
+                    return statementExprs[(_document == null ? 2 : 3)];
                 else
                     return Expr.Block(scope.GetLocals(), statementExprs);
             } 
@@ -161,7 +163,7 @@ namespace IronLua.Compiler
                         LuaTrace.MakePopFunctionCall(context),
                         funcResult
                     ),
-                    funcName, parameters);
+                    funcName, true, parameters);
             }
             finally
             {
@@ -173,6 +175,7 @@ namespace IronLua.Compiler
         {
             var variables = statement.Variables.Select(v => v.Visit(this)).ToList();
             var values = WrapWithVarargsFirst(statement.Values);
+            var access = variables.Select(v => new LuaTrace.VariableAccess(v.Identifier, LuaTrace.AccessType.GlobalSet)).ToList();
 
             var lastValue = statement.Values.Last();
             if (lastValue.IsVarargs() || lastValue.IsFunctionCall())
@@ -180,7 +183,7 @@ namespace IronLua.Compiler
                         VarargsExpandAssignment(variables, values));
 
             return Expr.Block(LuaTrace.MakeUpdateSourceSpan(context, statement.Span), 
-                AssignWithTemporaries(variables, values, Assign));
+                AssignWithTemporaries(variables, values, Assign, access));
         }
 
         Expr IStatementVisitor<Expr>.Visit(Statement.Do statement)
@@ -319,6 +322,7 @@ namespace IronLua.Compiler
             var values = (statement.Values != null && statement.Values.Count > 0) 
                        ? WrapWithVarargsFirst(statement.Values) : new List<Expr>();
             var locals = statement.Identifiers.Select(v => scope.AddLocal(v)).ToList();
+            var access = statement.Identifiers.Select(v => new LuaTrace.VariableAccess(v, LuaTrace.AccessType.LocalSet)).ToList();
 
             if (statement.Values != null && statement.Values.Count > 0)
             {
@@ -331,7 +335,7 @@ namespace IronLua.Compiler
 
             return Expr.Block(
                     LuaTrace.MakeUpdateSourceSpan(context, statement.Span), 
-                    AssignWithTemporaries(locals, values, Expr.Assign));
+                    AssignWithTemporaries(locals, values, Expr.Assign, access));
         }
 
         Expr IStatementVisitor<Expr>.Visit(Statement.LocalFunction statement)
@@ -600,7 +604,7 @@ namespace IronLua.Compiler
                     Expr.TryCatch(Expr.Assign(temp, Expr.Dynamic(context.CreateGetMemberBinder(identifier, false),
                                     typeof(object), Expr.Constant(globals))),
                                     Expr.Catch(Expr.Parameter(typeof(Exception)), Expr.Constant(null))),
-                    LuaTrace.MakeUpdateLastVariableAccess(context, new LuaTrace.VariableAccess(identifier, LuaTrace.AccessType.GlobalGet), temp),
+                    WrapVariableAccess(temp, new LuaTrace.VariableAccess(identifier, LuaTrace.AccessType.GlobalGet)),
                     temp);
 
 
@@ -611,7 +615,7 @@ namespace IronLua.Compiler
                     Expr.TryCatch(Expr.Assign(temp, Expr.Dynamic(context.CreateGetMemberBinder(identifier, false),
                                     typeof(object), scope.GetDlrGlobals())),
                                     Expr.Catch(Expr.Parameter(typeof(Exception)), Expr.Constant(null))),
-                    LuaTrace.MakeUpdateLastVariableAccess(context, new LuaTrace.VariableAccess(identifier, LuaTrace.AccessType.GlobalGet), temp),
+                    WrapVariableAccess(temp, new LuaTrace.VariableAccess(identifier, LuaTrace.AccessType.GlobalGet)),
                     temp);
 
             
@@ -625,7 +629,7 @@ namespace IronLua.Compiler
                 case VariableType.Identifier:
                     ParamExpr local;
                     if (scope.TryGetLocal(variable.Identifier, out local))
-                        return WrapVariableAccess(local, new LuaTrace.VariableAccess(variable.Identifier, LuaTrace.AccessType.LocalGet));
+                        return local;
 
                     return CreateGlobalGetMember(variable.Identifier, context.Globals, scope);
                     
@@ -716,7 +720,7 @@ namespace IronLua.Compiler
             return FieldVisit.CreateImplicit(field.Value.Visit(this));
         }
 
-        Expr AssignWithTemporaries<T>(List<T> variables, List<Expr> values, Func<T, Expr, Expr> assigner)
+        Expr AssignWithTemporaries<T>(List<T> variables, List<Expr> values, Func<T, Expr, Expr> assigner, List<LuaTrace.VariableAccess> access)
         {
             // Assign values to temporaries
             var tempVariables = values.Select(expr => Expr.Variable(expr.Type, "assign_temp")).ToList();
@@ -729,7 +733,10 @@ namespace IronLua.Compiler
                 .Select(tempVar => Expr.Convert(tempVar, typeof(object)));
 
             // Assign temporaries to globals
-            var realAssigns = variables.Zip(tempVariablesResized, assigner);
+            var realAssigns = variables.Zip(tempVariablesResized, assigner).Zip(access, (assign, varAccess) =>
+                {
+                    return WrapVariableAccess(assign, varAccess);  
+                });
             return Expr.Block(tempVariables, tempAssigns.Concat(realAssigns));
         }
 
@@ -751,9 +758,7 @@ namespace IronLua.Compiler
             var scopeDelete = Expr.TryCatch(Expr.Dynamic(context.CreateDeleteMemberBinder(identifier, false),
                                     typeof(void), scope.GetDlrGlobals()), Expr.Catch(Expr.Parameter(typeof(Exception)), Expr.Empty()));
 
-            var exp = Expr.Condition(Expr.Equal(value, Expr.Constant(null)), Expr.Block(scopeDelete, Expr.Constant(null)), scopeAssign);
-
-            return WrapVariableAccess(exp, new LuaTrace.VariableAccess(identifier, LuaTrace.AccessType.GlobalSet));
+            return Expr.Condition(Expr.Equal(value, Expr.Constant(null)), Expr.Block(scopeDelete, Expr.Constant(null)), scopeAssign);
         }
 
         Expr Assign(VariableVisit variable, Expr value)
@@ -763,7 +768,7 @@ namespace IronLua.Compiler
                 case VariableType.Identifier:
                     ParamExpr local;
                     if (scope.TryGetLocal(variable.Identifier, out local))
-                        return WrapVariableAccess(Expr.Assign(local, value), new LuaTrace.VariableAccess(variable.Identifier, LuaTrace.AccessType.LocalSet));
+                        return Expr.Assign(local, value);
 
 
                     return CreateGlobalSetMember(variable.Identifier, Expr.Constant(context.Globals), scope, value);
@@ -800,7 +805,7 @@ namespace IronLua.Compiler
             if (identifiers.Count == 1)
             {
                 if (isLocal)
-                    return Expr.Assign(local, value);
+                    return WrapVariableAccess(Expr.Assign(local, value), new LuaTrace.VariableAccess(identifiers[0], LuaTrace.AccessType.LocalSet));
 
                 return CreateGlobalSetMember(firstId, Expr.Constant(context.Globals), scope, value);
                 //return Expr.Dynamic(context.CreateSetMemberBinder(firstId, false),
@@ -811,7 +816,7 @@ namespace IronLua.Compiler
 
             // First element can be either a local or global variable
             if (isLocal)
-                expr = local;
+                expr = WrapVariableAccess(local, new LuaTrace.VariableAccess(identifiers[0], LuaTrace.AccessType.LocalGet));
             else
                 expr = CreateGlobalGetMember(firstId, context.Globals, scope);
                     //Expr.Dynamic(context.CreateGetMemberBinder(firstId, false),
@@ -822,12 +827,12 @@ namespace IronLua.Compiler
             expr = identifiers
                 .Skip(1).Take(identifiers.Count - 2)
                 .Aggregate(expr, (e, id) =>
-                    Expr.Dynamic(context.CreateGetMemberBinder(id, false),
-                                         typeof (object), e));
+                    WrapVariableAccess(Expr.Dynamic(context.CreateGetMemberBinder(id, false),
+                                         typeof (object), e), new LuaTrace.VariableAccess(id, LuaTrace.AccessType.MemberGet)));
 
             // Do the assignment on the last identifier
-            return Expr.Dynamic(context.CreateSetMemberBinder(identifiers.Last(), false),
-                                        typeof(object), expr, value);
+            return WrapVariableAccess(Expr.Dynamic(context.CreateSetMemberBinder(identifiers.Last(), false),
+                                        typeof(object), expr, value), new LuaTrace.VariableAccess(identifiers.Last(), LuaTrace.AccessType.MemberSet));
         }
 
         List<Expr> WrapWithVarargsFirst(List<Expression> values)
