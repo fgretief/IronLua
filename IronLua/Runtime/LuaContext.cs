@@ -180,6 +180,14 @@ namespace IronLua.Runtime
             var table = new LuaTable(this);
             SetupLibraries(table);
 
+            //Copy _globals into this scope's store
+            Varargs obj = null;
+            do
+            {
+                obj = _globals.Next(obj);
+                table.SetValue(obj.First(), obj.Last());
+            } while (obj != null);
+
             var scope = new Scope(table);
 
             return scope;
