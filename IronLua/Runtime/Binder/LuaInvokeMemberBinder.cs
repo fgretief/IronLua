@@ -36,7 +36,7 @@ namespace IronLua.Runtime.Binder
                     combinedArgs);
 
             expression = MetamethodFallbacks.WrapStackTrace(expression, context,
-                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Name));
+                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, context.Trace.CurrentVariableIdentifier + "." + Name));
 
             return new DynamicMetaObject(expression, restrictions);
         }

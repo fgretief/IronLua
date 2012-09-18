@@ -39,7 +39,7 @@ namespace IronLua.Runtime.Binder
             if (!target.LimitType.IsSubclassOf(typeof(Delegate)) && target.LimitType != typeof(Varargs))
                 return new DynamicMetaObject(
                     MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.Call(context, target, args), context,
-                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, context.Trace.LastVariableAccess.VariableName + "." + Constant.CALL_METAMETHOD)), restrictions);
+                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, context.Trace.CurrentVariableIdentifier + "." + Constant.CALL_METAMETHOD)), restrictions);
             
 
 

@@ -201,6 +201,16 @@ namespace IronLua
         }
 
 
+        public IEnumerable<string> AccessibleVariables
+        {
+            get { return Context.Trace.AccessibleVariables.Select(x => x.Key); }
+        }
+
+        public IEnumerable<object> GetVariableValues(string identifier)
+        {
+            return Context.Trace.AccessibleVariables.Where(x => x.Key == identifier).Select(x => x.Value);
+        }
+        
 
         /// <summary>
         /// Gets the formatted list of invoked Lua expressions leading up to this error
