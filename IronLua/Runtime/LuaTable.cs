@@ -76,6 +76,9 @@ namespace IronLua.Runtime
 
         internal object SetValue(object key, object value)
         {
+            if (key == null)
+                return null;
+
             if (value == null)
             {
                 Remove(key);
@@ -124,6 +127,9 @@ namespace IronLua.Runtime
 
         internal object SetConstant(object key, object value)
         {
+            if (key == null)
+                return null;
+
             if (value == null)
             {
                 Remove(key);
@@ -178,12 +184,19 @@ namespace IronLua.Runtime
 
         internal object GetValue(object key)
         {
+            if (key == null)
+                return null;
+
             var pos = FindEntry(key);
             return pos < 0 ? null : entries[pos].Value;
         }
 
         internal bool HasValue(object key)
         {
+            if (key == null)
+                return false;
+
+
             var pos = FindEntry(key);
             return pos >= 0;
         }
