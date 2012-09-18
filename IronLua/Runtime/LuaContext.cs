@@ -174,14 +174,6 @@ namespace IronLua.Runtime
             base.ScopeSetVariable(scope, name, value);
         }
 
-        public override Scope GetScope(string path)
-        {
-            var scope = base.GetScope(path);
-            if (scope == null)
-                scope = CreateScope();
-            return scope;
-        }
-
         public override Scope CreateScope()
         {
             var table = new LuaTable(this);
