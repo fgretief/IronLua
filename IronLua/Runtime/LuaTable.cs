@@ -8,13 +8,15 @@ using IronLua.Util;
 using Expr = System.Linq.Expressions.Expression;
 using ExprType = System.Linq.Expressions.ExpressionType;
 using IronLua.Hosting;
+using System.Collections.ObjectModel;
+using System.Collections;
 
 namespace IronLua.Runtime
 {
 #if DEBUG
     [DebuggerTypeProxy(typeof(LuaTableDebugView))]
 #endif
-    class LuaTable : IDynamicMetaObjectProvider
+    class LuaTable : IDynamicMetaObjectProvider, IDictionary<object,object>
     {
         int[] buckets;
         Entry[] entries;
@@ -52,6 +54,8 @@ namespace IronLua.Runtime
         {
             return new MetaTable(Context, parameter, BindingRestrictions.Empty, this);
         }
+
+        #region LuaTable Methods
 
         internal Varargs Next(object index = null)
         {
@@ -201,7 +205,7 @@ namespace IronLua.Runtime
             return pos >= 0;
         }
 
-        void Remove(object key)
+        public void Remove(object key)
         {
             var hashCode = key.GetHashCode() & Int32.MaxValue;
             var modHashCode = hashCode % buckets.Length;
@@ -292,6 +296,148 @@ namespace IronLua.Runtime
             return entries.Count(x => x.Key != null);
         }
 
+        #endregion
+
+        #region IDictionary Methods
+
+        /// <inheritdoc/>
+        public void Add(object key, object value)
+        {
+            SetValue(key, value);
+        }
+
+        /// <inheritdoc/>
+        public bool ContainsKey(object key)
+        {
+            return HasValue(key);
+        }
+
+        private IEnumerable<object> _keys()
+        {
+            Varargs current = null;
+            while ((current = Next(current)) != null)
+                yield return current.First();
+        }
+
+        /// <inheritdoc/>
+        public ICollection<object> Keys
+        {
+            get 
+            {
+                return new ReadOnlyCollection<object>(_keys().ToList());                
+            }
+        }
+
+        /// <inheritdoc/>
+        bool IDictionary<object, object>.Remove(object key)
+        {
+            return SetValue(key, null) == null;
+        }
+
+        /// <inheritdoc/>
+        public bool TryGetValue(object key, out object value)
+        {
+            value = GetValue(key);
+            return value != null;
+        }
+
+        private IEnumerable<object> _values()
+        {
+            Varargs current = null;
+            while ((current = Next(current)) != null)
+                yield return current.Last();
+        }
+
+        /// <inheritdoc/>
+        public ICollection<object> Values
+        {
+            get { return new ReadOnlyCollection<object>(_values().ToList()); }
+        }
+
+        /// <inheritdoc/>
+        public object this[object key]
+        {
+            get
+            {
+                if (key.GetType() == typeof(int))
+                    return GetValue(Convert.ToDouble(key));
+
+                return GetValue(key);
+            }
+            set
+            {
+                if (key.GetType() == typeof(int))
+                    SetValue(Convert.ToDouble(key), value);
+                else
+                    SetValue(key, value);
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Add(KeyValuePair<object, object> item)
+        {
+            SetValue(item.Key, item.Value);
+        }
+
+        /// <inheritdoc/>
+        public void Clear()
+        {
+            Varargs current = null;
+            while ((current = Next()) != null)
+                Remove(current.First());
+        }
+
+        /// <inheritdoc/>
+        public bool Contains(KeyValuePair<object, object> item)
+        {
+            return (HasValue(item.Key) && GetValue(item.Key).Equals(item.Value)) || (!HasValue(item.Key) && item.Value == null);
+        }
+
+        /// <inheritdoc/>
+        public void CopyTo(KeyValuePair<object, object>[] array, int arrayIndex)
+        {
+            Varargs current = null;
+            while ((current = Next(current)) != null)
+                array[arrayIndex++] = new KeyValuePair<object, object>(current.First(), current.Last());
+        }
+
+        /// <inheritdoc/>
+        int ICollection<KeyValuePair<object, object>>.Count
+        {
+            get { return Count(); }
+        }
+
+        /// <inheritdoc/>
+        public bool IsReadOnly
+        {
+            get { return false; }
+        }
+
+        /// <inheritdoc/>
+        public bool Remove(KeyValuePair<object, object> item)
+        {
+            if (HasValue(item.Key) && GetValue(item.Key).Equals(item.Value))
+            {
+                Remove(item.Key);
+                return true;
+            }
+            return false;
+        }
+
+        /// <inheritdoc/>
+        public IEnumerator<KeyValuePair<object, object>> GetEnumerator()
+        {
+            return new LuaTableEnumerator(this);
+        }
+
+        /// <inheritdoc/>
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return new LuaTableEnumerator(this);            
+        }
+
+        #endregion
+
         struct Entry
         {
             public int HashCode;
@@ -299,6 +445,66 @@ namespace IronLua.Runtime
             public object Value;
             public int Next;
             public bool Locked;
+        }
+
+        class LuaTableEnumerator : IEnumerator, IEnumerator<KeyValuePair<object,object>>, IEnumerator<Varargs>
+        {
+            private readonly LuaTable Table;
+            private Varargs current;
+            bool hasEnumerated = false;
+
+            internal LuaTableEnumerator(LuaTable table)
+            {
+                Table = table;
+            }
+
+            public object Current
+            {
+                get 
+                {
+                    if (!hasEnumerated)
+                        throw new InvalidOperationException("Must call MoveNext before retrieving current value");
+                    return current; 
+                }
+            }
+
+            public bool MoveNext()
+            {
+                hasEnumerated = true;
+                current = Table.Next(current);
+                return current != null;
+            }
+
+            public void Reset()
+            {
+                current = null;
+                hasEnumerated = false;
+            }
+
+            KeyValuePair<object, object> IEnumerator<KeyValuePair<object, object>>.Current
+            {
+                get
+                {
+                    if (!hasEnumerated)
+                        throw new InvalidOperationException("Must call MoveNext before retrieving current value"); 
+                    return new KeyValuePair<object, object>(current.First(), current.Last());
+                }
+            }
+
+            public void Dispose()
+            {
+                
+            }
+
+            Varargs IEnumerator<Varargs>.Current
+            {
+                get
+                {
+                    if (!hasEnumerated)
+                        throw new InvalidOperationException("Must call MoveNext before retrieving current value");
+                    return current;
+                }
+            }
         }
 
         class MetaTable : DynamicMetaObject
