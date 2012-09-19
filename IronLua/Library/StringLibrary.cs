@@ -9,7 +9,7 @@ namespace IronLua.Library
 {
     class StringLibrary : Library
     {
-        public StringLibrary(LuaContext context) 
+        public StringLibrary(CodeContext context) 
             : base(context)
         {
         }

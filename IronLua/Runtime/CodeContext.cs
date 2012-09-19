@@ -6,6 +6,10 @@ using System.Dynamic;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Actions;
 using IronLua.Compiler;
+using Microsoft.Scripting.Utils;
+using System.Linq.Expressions;
+using Microsoft.Scripting;
+using IronLua.Library;
 
 namespace IronLua.Runtime
 {
@@ -14,12 +18,22 @@ namespace IronLua.Runtime
         public CodeContext(LuaContext language)
         {
             Language = language;
+            _metatables = SetupMetatables();
+            _BaseLibrary = new BaseLibrary(this);
         }
+
+        #region CodeContext Properties and Shortcuts
 
         /// <summary>
         /// Gets the language context which is handling this code context
         /// </summary>
         public LuaContext Language
+        { get; private set; }
+
+        /// <summary>
+        /// Gets the SourceUnit from which this CodeContext was generated
+        /// </summary>
+        public SourceUnit Source
         { get; private set; }
 
         /// <summary>
@@ -34,9 +48,39 @@ namespace IronLua.Runtime
         public IDynamicMetaObjectProvider ExecutingScopeStorage
         { get; private set; }
 
+        /// <summary>
+        /// Gets the default binder used by Lua
+        /// </summary>
         public DefaultBinder Binder
         { get { return Language.Binder; } }
 
+        /// <summary>
+        /// Gets the scope containing the engine's currently defined global values
+        /// </summary>
+        public Scope EngineGlobals
+        { get { return Language.DomainManager.Globals; } }
+
+        /// <summary>
+        /// Gets the <see cref="SharedIO"/> object used by this language's engine
+        /// </summary>
+        public SharedIO EngineIO
+        { get { return Language.DomainManager.SharedIO; } }
+
+        /// <summary>
+        /// Gets the function which can be executed to run this CodeContext's compiled code
+        /// </summary>
+        public Func<IDynamicMetaObjectProvider, dynamic> Execute
+        { get; internal set; }
+
+        /// <summary>
+        /// Gets a value indicating whether tracing is enabled on an engine level
+        /// </summary>
+        public bool EnableTracing
+        {
+            get { return Language.EnableTracing; }
+        }
+
+        #endregion
 
         #region Execution Environment
 
@@ -122,6 +166,266 @@ namespace IronLua.Runtime
         }
 
         #endregion
+        
+        #region Object Operations Support
 
+        /// <summary>
+        /// Gets the language specific dynamic callsite cache
+        /// </summary>
+        internal DynamicCache DynamicCache
+        { get { return Language.DynamicCache; } }
+
+        // These methods is called by the DynamicOperations class that can be
+        // retrieved via the inherited Operations property of this class.
+
+        public UnaryOperationBinder CreateUnaryOperationBinder(ExpressionType operation)
+        {
+            return Language.CreateUnaryOperationBinder(operation);
+        }
+
+        public BinaryOperationBinder CreateBinaryOperationBinder(ExpressionType operation)
+        {
+            return Language.CreateBinaryOperationBinder(operation);
+        }
+
+        public ConvertBinder CreateConvertBinder(Type toType, bool? explicitCast)
+        {
+            return Language.CreateConvertBinder(toType, explicitCast);
+        }
+
+        public GetMemberBinder CreateGetMemberBinder(string name, bool ignoreCase)
+        {
+            return Language.CreateGetMemberBinder(name, ignoreCase);
+        }
+
+        public SetMemberBinder CreateSetMemberBinder(string name, bool ignoreCase)
+        {
+            return Language.CreateSetMemberBinder(name, ignoreCase);
+        }
+
+        public DeleteMemberBinder CreateDeleteMemberBinder(string name, bool ignoreCase)
+        {
+            return Language.CreateDeleteMemberBinder(name, ignoreCase);
+        }
+
+        public GetIndexBinder CreateGetIndexBinder(CallInfo callInfo)
+        {
+            return Language.CreateGetIndexBinder(callInfo);
+        }
+
+        public SetIndexBinder CreateSetIndexBinder(CallInfo callInfo)
+        {
+            return Language.CreateSetIndexBinder(callInfo);
+        }
+
+        public DeleteIndexBinder CreateDeleteIndexBinder()
+        {
+            throw new NotImplementedException();
+        }
+
+        public InvokeMemberBinder CreateCallBinder(string name, bool ignoreCase, CallInfo callInfo)
+        {
+            return Language.CreateCallBinder(name, ignoreCase, callInfo);
+        }
+
+        public InvokeBinder CreateInvokeBinder(CallInfo callInfo)
+        {
+            return Language.CreateInvokeBinder(callInfo);
+        }
+
+        public CreateInstanceBinder CreateCreateBinder(CallInfo callInfo)
+        {
+            return Language.CreateCreateBinder(callInfo);
+        }
+
+        #endregion
+
+        #region Execution Stack
+
+        private readonly List<FunctionStack> _FunctionStacks = new List<FunctionStack>();
+
+        internal IEnumerable<FunctionStack> FunctionStacks
+        { get { return _FunctionStacks; } }
+
+        #region Variable Access Stack
+
+        public enum AccessType
+        {
+            GlobalGet, GlobalSet,
+            LocalGet, LocalSet,
+            MemberGet, MemberSet,
+            IndexGet, IndexSet
+        }
+
+        public class VariableAccess
+        {
+            public VariableAccess(string identifier, AccessType operation)
+            {
+                VariableName = identifier;
+                Operation = operation;
+            }
+
+            public string VariableName
+            { get; private set; }
+
+            public AccessType Operation
+            { get; private set; }
+
+            public object Value
+            { get; internal set; }
+        }
+
+        private Stack<VariableAccess> variableAccessStack = new Stack<VariableAccess>();
+
+        //Holds a scope-depth stack of the expected sizes for the variable access stack
+        private Stack<int> accessStackExpectedSize = new Stack<int>();
+
+        //Holds the number of global variables defined within scopes, 
+        //thus offsetting the expected variable access stack size by this value
+        private int accessStackSizeOffset = 0;
+
+        public VariableAccess LastVariableAccess
+        { get { return variableAccessStack.Count > 0 ? variableAccessStack.Peek() : null; } }
+
+        public string CurrentVariableIdentifier
+        {
+            get
+            {
+                string identifier = null;
+                foreach (var v in variableAccessStack)
+                    switch (v.Operation)
+                    {
+                        case AccessType.GlobalGet:
+                        case AccessType.GlobalSet:
+                        case AccessType.LocalGet:
+                        case AccessType.LocalSet:
+                            identifier = v.VariableName + (identifier == null ? "" : ("." + identifier));
+                            return identifier;
+
+                        case AccessType.MemberGet:
+                        case AccessType.MemberSet:
+                            identifier = v.VariableName + (identifier == null ? "" : ("." + identifier));
+                            break;
+
+                        case AccessType.IndexGet:
+                        case AccessType.IndexSet:
+                            identifier = "[" + v.VariableName + "]" + (identifier == null ? "" : ("." + identifier));
+                            break;
+                    }
+
+                return "No current variable";
+            }
+        }
+        
+        private AccessType GetRootOperation()
+        {
+            Stack<VariableAccess> backup = new Stack<VariableAccess>(variableAccessStack.Reverse());
+            while (backup.Count > 0)
+            {
+                var v = backup.Pop();
+                switch (v.Operation)
+                {
+                    case AccessType.GlobalSet:
+                    case AccessType.GlobalGet:
+                    case AccessType.LocalGet:
+                    case AccessType.LocalSet:
+                        return v.Operation;
+                    default: continue;
+                }
+            }
+
+            throw new LuaRuntimeException(this, "No variables have been accessed yet");
+        }
+
+        private void RemoveTopOperation(Stack<VariableAccess> store = null)
+        {
+            var stack = _FunctionStacks.Last().Locals;
+            while (stack.Count > 0)
+            {
+                var v = stack.Pop();
+                if (store != null)
+                    store.Push(v);
+                switch (v.Operation)
+                {
+                    case AccessType.GlobalSet:
+                    case AccessType.GlobalGet:
+                    case AccessType.LocalGet:
+                    case AccessType.LocalSet:
+                        return;
+                    default: continue;
+                }
+            }
+
+            throw new LuaRuntimeException(this, "No variables have been accessed yet");
+        }
+
+        public VariableAccess GetVariableAccess(int stackLevel, int variableIndex)
+        {
+            if (_FunctionStacks.Count < stackLevel)
+                throw new LuaRuntimeException(this, "The given stack level was invalid");
+            var callStackEntry = _FunctionStacks[_FunctionStacks.Count - stackLevel + 1];
+
+            if (callStackEntry.Locals.Count < variableIndex)
+                return null;
+            return callStackEntry.Locals.Reverse().ElementAt(variableIndex - 1);
+        }
+
+        #endregion
+
+        #endregion
+
+        #region Libraries
+
+        private readonly BaseLibrary _BaseLibrary;
+
+        //Stores a list of loaded libraries which are implemented in CLR code
+        private readonly Dictionary<string, Library.Library> _LoadedBaseLibraries = new Dictionary<string, Library.Library>();
+
+        //Stores a list of loaded packages, these are both CLR libraries and Lua code pieces which have been executed with "require"
+        //In the case of packages loaded with "require" this just stores the table returned from that call, which should represent the library
+        private readonly Dictionary<string, IDictionary<string, object>> _LoadedPackages = new Dictionary<string, IDictionary<string, object>>();
+
+        /// <summary>
+        /// Loads the given library, attempting first to locate a CLR library with that name, and if that fails, then falls back on
+        /// searching for a Lua file with the given name.
+        /// 
+        /// If a Lua file is found with that name, it is executed and its output cached for future access
+        /// </summary>
+        public LuaTable RequireLibrary(string libraryName)
+        {
+            //We can perform any library specific initialization stuff here (which may require things to be set outside of the library's table)
+            switch(libraryName)
+            {
+                case "debug":
+                    //Enable debug library features
+                    break;
+            }
+
+            if (Language.IsBaseLibrary(libraryName) && !_LoadedBaseLibraries.ContainsKey(libraryName))
+            {
+                _LoadedBaseLibraries.Add(libraryName, Language.GetLibraryInstance(libraryName, this));
+            }
+
+            if (Language.IsBaseLibrary(libraryName))
+            {
+                LuaTable temp = new LuaTable(this);
+                _LoadedBaseLibraries[libraryName].Setup(temp);
+
+                //Now we need to set the global variable that this library uses
+                (ExecutingScopeStorage as IDictionary<string, object>).AddOrSet(libraryName, temp);
+
+                return temp;
+            }
+            else if(_LoadedPackages.ContainsKey(libraryName))
+            {
+                LuaTable temp = new LuaTable(this);
+                foreach (var v in _LoadedPackages[libraryName]) temp.Add(v);
+                return temp;
+            }
+
+            return null;
+        }
+
+        #endregion
     }
 }

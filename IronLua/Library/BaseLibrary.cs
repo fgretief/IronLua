@@ -15,7 +15,7 @@ namespace IronLua.Library
 {
     class BaseLibrary : Library
     {
-        public BaseLibrary(LuaContext context) 
+        public BaseLibrary(CodeContext context) 
             : base(context)
         {
         }
@@ -197,8 +197,7 @@ namespace IronLua.Library
 
         public void Print(params object[] args)
         {
-            var domain = Context.DomainManager;
-            var writer = domain.SharedIO.OutputWriter;
+            var writer = Context.EngineIO.OutputWriter;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -260,7 +259,7 @@ namespace IronLua.Library
             return ToNumber(Context, obj, @base);
         }
 
-        public static object ToNumber(LuaContext context, object obj, object @base = null)
+        public static object ToNumber(CodeContext context, object obj, object @base = null)
         {
             var numBase = ConvertToNumber(context, @base, 2, 10.0);
 
@@ -426,7 +425,7 @@ namespace IronLua.Library
             return ConvertToNumber(Context, obj, argumentIndex, @default);
         }
 
-        static double ConvertToNumber(LuaContext context, object obj, int argumentIndex, double @default = Double.NaN)
+        static double ConvertToNumber(CodeContext context, object obj, int argumentIndex, double @default = Double.NaN)
         {
             string tempString;
 
@@ -458,11 +457,11 @@ namespace IronLua.Library
             return -1;
         }
 
-        static Func<dynamic> CompileString(LuaContext context, string source)
+        static Func<dynamic> CompileString(CodeContext context, string source)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
-            var sourceUnit = context.CreateSnippet(source, SourceCodeKind.Statements);
+            var sourceUnit = context.Language.CreateSnippet(source, SourceCodeKind.Statements);
 
             //var options = (LuaCompilerOptions)context.GetCompilerOptions();
             //var errorSink = context.GetCompilerErrorSink();
@@ -474,7 +473,7 @@ namespace IronLua.Library
             var parser = new Parser(lexer, lexer.ErrorSink);
             var ast = parser.Parse();
             var gen = new Generator(context);
-            var expr = gen.CompileInline(ast, context.Trace.CurrentEvaluationScope.GetRoot(), context.Trace.CurrentScopeStorage, sourceUnit);
+            var expr = gen.CompileInline(ast, context.FunctionStacks.Last().ExecScope, context.ExecutingScopeStorage, sourceUnit);
             return expr.Compile();
         }
 
@@ -499,6 +498,7 @@ namespace IronLua.Library
             table.AddNotPresent("rawequal", (Func<object, object, bool>)RawEqual);
             table.AddNotPresent("rawget", (Func<LuaTable, object, object>)RawGet);
             table.AddNotPresent("rawset", (Func<LuaTable, object, object, object>)RawSet);
+            table.AddNotPresent("require", (Func<string, LuaTable>)Context.RequireLibrary);
             table.AddNotPresent("select", (Func<object, object[], Varargs>)Select);
             table.AddNotPresent("setfenv", (Func<object, LuaTable, object>)SetFEnv);
             table.AddNotPresent("setmetatable", (Func<LuaTable, LuaTable, LuaTable>)SetMetatable);

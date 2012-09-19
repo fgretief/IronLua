@@ -8,16 +8,16 @@ namespace IronLua.Runtime.Binder
 {
     class LuaGetMemberBinder : GetMemberBinder
     {
-        private readonly LuaContext _context;
+        private readonly CodeContext _context;
 
-        public LuaGetMemberBinder(LuaContext context, string name, bool ignoreCase = false)
+        public LuaGetMemberBinder(CodeContext context, string name, bool ignoreCase = false)
             : base(name, ignoreCase)
         {
             Contract.Requires(context != null);
             _context = context;
         }
 
-        public LuaContext Context
+        public CodeContext Context
         {
             get { return _context; }
         }

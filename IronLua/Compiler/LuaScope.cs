@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using Expr = System.Linq.Expressions.Expression;
 using ParamExpr = System.Linq.Expressions.ParameterExpression;
+using IronLua.Runtime;
 
 namespace IronLua.Compiler
 {
@@ -14,17 +15,25 @@ namespace IronLua.Compiler
         const string ReturnLabelName = "@return";
 
         readonly LuaScope parent;
+        readonly CodeContext context;
         readonly Dictionary<string, ParamExpr> variables;
         readonly Dictionary<string, LabelTarget> labels;
-
-        ParamExpr dlrGlobals; // only set if parent == null
-
+        
         static int hiddenId;
 
         public bool IsRoot { get { return parent == null; } }
 
-        private LuaScope(LuaScope parent = null)
+        private LuaScope(CodeContext context)
         {
+            this.context = context;
+            this.parent = null;
+            this.variables = new Dictionary<string, ParamExpr>();
+            this.labels = new Dictionary<string, LabelTarget>();
+        }
+        
+        private LuaScope(LuaScope parent)
+        {
+            this.context = parent.context;
             this.parent = parent;
             this.variables = new Dictionary<string, ParamExpr>();
             this.labels = new Dictionary<string, LabelTarget>();
@@ -107,19 +116,15 @@ namespace IronLua.Compiler
             return AddLabel(BreakLabelName); 
         }
 
-        public ParamExpr GetDlrGlobals()
+        public Expr GetDlrGlobals()
         {
-            if (dlrGlobals != null || parent == null)
-                return dlrGlobals;
-
-            return parent.GetDlrGlobals();
+            return CodeContext.GetExecutionEnvironment(context, this);
         }
 
-        public static LuaScope CreateRoot(ParamExpr dlrGlobals)
+        public static LuaScope CreateRoot(CodeContext context)
         {
-            Contract.Requires(dlrGlobals != null);
-            var scope = new LuaScope();
-            scope.dlrGlobals = dlrGlobals;
+            Contract.Requires(context != null);
+            var scope = new LuaScope(context);
             scope.labels.Add(ReturnLabelName, Expr.Label(typeof(object)));
             return scope;
         }

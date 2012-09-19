@@ -25,25 +25,180 @@ namespace IronLua.Runtime
     public sealed class LuaContext : LanguageContext
     {
         private readonly DynamicCache _dynamicCache;
-
-        [ThreadStatic]
-        private readonly LuaTrace _trace;
-
+        
         public LuaContext(ScriptDomainManager manager, IDictionary<string, object> options = null)
             : base(manager)
         {
             // TODO: options
+            if (options.ContainsKey("tracing"))
+                EnableTracing = options["tracing"] is bool && (bool)options["tracing"];
             
             _binder = new LuaBinder(this);
             _dynamicCache = new DynamicCache(this);
-            _trace = new LuaTrace(this);
-            _metatables = SetupMetatables();
+            SetupLibraries();
         }
 
         internal DynamicCache DynamicCache
         {
             get { return _dynamicCache; }
         }
+
+
+        #region Scope Operations Support
+
+        public override bool ScopeTryGetVariable(Scope scope, string name, out dynamic value)
+        {
+            if (scope.Storage is LuaTable)
+            {
+                dynamic storage = scope.Storage;
+                value = storage[name];
+                return (object)value != null;
+            }
+            
+            return base.ScopeTryGetVariable(scope, name, out value);
+        }
+
+        public override dynamic ScopeGetVariable(Scope scope, string name)
+        {
+            if (scope.Storage is LuaTable)
+            {
+                dynamic storage = scope.Storage;
+                return storage[name];
+            }
+            return base.ScopeGetVariable(scope, name);
+        }
+        
+        public override T ScopeGetVariable<T>(Scope scope, string name)
+        {
+            if (scope.Storage is LuaTable)
+            {
+                dynamic storage = scope.Storage;
+                return storage[name];
+            }
+            return base.ScopeGetVariable<T>(scope, name);
+        }
+
+        public override void ScopeSetVariable(Scope scope, string name, object value)
+        {
+            if (scope.Storage is LuaTable)
+            {
+                dynamic storage = scope.Storage;
+                storage[name] = value;
+                return;
+            }
+
+            base.ScopeSetVariable(scope, name, value);
+        }
+
+        /// <inheritdoc/>
+        public override Scope CreateScope()
+        {
+            var table = new LuaTable();            
+            var scope = new Scope(table as IDynamicMetaObjectProvider);
+
+            return scope;
+        }
+
+        #endregion
+
+        #region Public API
+
+        private static object ToLuaObject(object obj)
+        {
+            if (obj is Delegate)
+                return obj;
+
+            if (obj is double)
+                return obj;
+
+            if (obj is string)
+                return obj;
+
+            double d_temp = 0;
+            if (double.TryParse(obj.ToString(), out d_temp))
+                return d_temp;
+
+            return obj;
+        }
+
+        #endregion
+
+        #region Trace/Debug
+        
+        private Debugging.CompilerServices.DebugContext _debugContext;
+        private Debugging.ITracePipeline _tracePipeline;
+
+        //[ThreadStatic]
+        //private static Stack<LuaTracebackListener> _tracebackListeners;
+        //private static int _tracingThreads;
+
+        //internal Debugging.CompilerServices.DebugContext DebugContext
+        //{
+        //    get
+        //    {
+        //        EnsureDebugContext();
+
+        //        return _debugContext;
+        //    }
+        //}
+
+        //internal void EnsureDebugContext()
+        //{
+        //    if (_debugContext == null || _tracePipeline == null)
+        //    {
+        //        lock (this)
+        //        {
+        //            if (_debugContext == null)
+        //            {
+        //                _debugContext = Debugging.CompilerServices.DebugContext.CreateInstance();
+        //                _tracePipeline = Debugging.TracePipeline.CreateInstance(_debugContext);
+        //            }
+        //        }
+        //    }
+
+        //    if (_tracebackListeners == null)
+        //    {
+        //        _tracebackListeners = new Stack<LuaTracebackListener>();
+        //        // push the default listener
+        //        _tracebackListeners.Push(new LuaTracebackListener(this));
+        //    }
+        //}
+
+        //internal Debugging.ITracePipeline TracePipeline
+        //{
+        //    get
+        //    {
+        //        return _tracePipeline;
+        //    }
+        //}
+
+        public bool EnableTracing
+        { get; set; }
+
+        #endregion
+
+        #region Interop Storage
+
+        //Stores LuaTables which represent namespace/Type paths. For example:
+        //System.Collections.Generic.Dictionary<TKey,TValue> would have
+        //System                                    - LuaTable
+        //System.Collections                        - LuaTable
+        //System.Collections.Generic                - LuaTable
+        //System.Collections.Generic.Dictionary<..> - LuaTable (CLR type wrapper)
+        private readonly Dictionary<string, LuaTable> _clrNamespaces = new Dictionary<string, LuaTable>();
+
+        internal LuaTable GetCLRNamespace(string @namespace)
+        {
+            if (_clrNamespaces.ContainsKey(@namespace))
+                return _clrNamespaces[@namespace];
+
+            var typeTable = InteropLibrary.GetTypeTable(Type.GetType(@namespace, false));
+            if(typeTable != null)
+                _clrNamespaces.Add(@namespace, typeTable);
+            return typeTable;
+        }
+
+        #endregion
 
         #region Object Operations Support
 
@@ -122,169 +277,8 @@ namespace IronLua.Runtime
             // TODO: not implemented yet
             return base.CreateCreateBinder(callInfo);
         }
-        
-        #endregion
-
-        #region Scope Operations Support
-
-        public override bool ScopeTryGetVariable(Scope scope, string name, out dynamic value)
-        {
-            if (scope.Storage is LuaTable)
-            {
-                dynamic storage = scope.Storage;
-                value = storage[name];
-                return (object)value != null;
-            }
-            
-            return base.ScopeTryGetVariable(scope, name, out value);
-        }
-
-        public override dynamic ScopeGetVariable(Scope scope, string name)
-        {
-            if (scope.Storage is LuaTable)
-            {
-                dynamic storage = scope.Storage;
-                return storage[name];
-            }
-            return base.ScopeGetVariable(scope, name);
-        }
-        
-        public override T ScopeGetVariable<T>(Scope scope, string name)
-        {
-            if (scope.Storage is LuaTable)
-            {
-                dynamic storage = scope.Storage;
-                return storage[name];
-            }
-            return base.ScopeGetVariable<T>(scope, name);
-        }
-
-        public override void ScopeSetVariable(Scope scope, string name, object value)
-        {
-            if (scope.Storage is LuaTable)
-            {
-                dynamic storage = scope.Storage;
-                storage[name] = value;
-                return;
-            }
-
-            base.ScopeSetVariable(scope, name, value);
-        }
-
-        /// <inheritdoc/>
-        public override Scope CreateScope()
-        {
-            var table = new LuaTable();
-            SetupLibraries(table);
-            
-            var scope = new Scope(table as IDynamicMetaObjectProvider);
-
-            
-
-            return scope;
-        }
 
         #endregion
-
-        #region Public API
-
-        private static object ToLuaObject(object obj)
-        {
-            if (obj is Delegate)
-                return obj;
-
-            if (obj is double)
-                return obj;
-
-            if (obj is string)
-                return obj;
-
-            double d_temp = 0;
-            if (double.TryParse(obj.ToString(), out d_temp))
-                return d_temp;
-
-            return obj;
-        }
-
-        #endregion
-
-        #region Trace/Debug
-        
-        private Debugging.CompilerServices.DebugContext _debugContext;
-        private Debugging.ITracePipeline _tracePipeline;
-
-        //[ThreadStatic]
-        //private static Stack<LuaTracebackListener> _tracebackListeners;
-        //private static int _tracingThreads;
-
-        //internal Debugging.CompilerServices.DebugContext DebugContext
-        //{
-        //    get
-        //    {
-        //        EnsureDebugContext();
-
-        //        return _debugContext;
-        //    }
-        //}
-
-        //internal void EnsureDebugContext()
-        //{
-        //    if (_debugContext == null || _tracePipeline == null)
-        //    {
-        //        lock (this)
-        //        {
-        //            if (_debugContext == null)
-        //            {
-        //                _debugContext = Debugging.CompilerServices.DebugContext.CreateInstance();
-        //                _tracePipeline = Debugging.TracePipeline.CreateInstance(_debugContext);
-        //            }
-        //        }
-        //    }
-
-        //    if (_tracebackListeners == null)
-        //    {
-        //        _tracebackListeners = new Stack<LuaTracebackListener>();
-        //        // push the default listener
-        //        _tracebackListeners.Push(new LuaTracebackListener(this));
-        //    }
-        //}
-
-        //internal Debugging.ITracePipeline TracePipeline
-        //{
-        //    get
-        //    {
-        //        return _tracePipeline;
-        //    }
-        //}
-
-        internal LuaTrace Trace
-        { get { return _trace; } }
-
-        #endregion
-
-        #region Interop Storage
-
-        //Stores LuaTables which represent namespace/Type paths. For example:
-        //System.Collections.Generic.Dictionary<TKey,TValue> would have
-        //System                                    - LuaTable
-        //System.Collections                        - LuaTable
-        //System.Collections.Generic                - LuaTable
-        //System.Collections.Generic.Dictionary<..> - LuaTable (CLR type wrapper)
-        private readonly Dictionary<string, LuaTable> _clrNamespaces = new Dictionary<string, LuaTable>();
-
-        internal LuaTable GetCLRNamespace(string @namespace)
-        {
-            if (_clrNamespaces.ContainsKey(@namespace))
-                return _clrNamespaces[@namespace];
-
-            var typeTable = InteropLibrary.GetTypeTable(Type.GetType(@namespace, false));
-            if(typeTable != null)
-                _clrNamespaces.Add(@namespace, typeTable);
-            return typeTable;
-        }
-
-        #endregion
-
         public override ScriptCode CompileSourceCode(SourceUnit sourceUnit, CompilerOptions options, ErrorSink errorSink)
         {
             ContractUtils.RequiresNotNull(sourceUnit, "sourceUnit");
@@ -316,7 +310,10 @@ namespace IronLua.Runtime
 
                 var parser = new Parser(lexer, errorSink);
                 var ast = parser.Parse();
-                var gen = new Generator(this);
+
+                var codeContext = new CodeContext(this);
+
+                var gen = new Generator(codeContext);
                 var exprLambda = gen.Compile(ast, sourceUnit);
                 //sourceUnit.CodeProperties = ScriptCodeParseResult.Complete;
                 return new LuaScriptCode(this, sourceUnit, exprLambda);
@@ -409,64 +406,32 @@ namespace IronLua.Runtime
         
         #region Lua base library management
 
-        LuaTable SetupLibraries(LuaTable globals)
+        private readonly Dictionary<string, Func<CodeContext, Library.Library>> BaseLibraries = new Dictionary<string, Func<CodeContext,Library.Library>>();
+
+        internal bool IsBaseLibrary(string name)
         {
-            ContractUtils.RequiresNotNull(globals, "globals");
-
-            BaseLibrary = new BaseLibrary(this);
-            BaseLibrary.Setup(globals);
-
-            PackageLibrary = new PackageLibrary(this);
-            var packagelibTable = new LuaTable(this);
-            PackageLibrary.Setup(packagelibTable);
-            globals.SetConstant("package", packagelibTable);
-
-            //TableLibrary = new TableLibrary();
-            var tablelibTable = new LuaTable(this);
-            //TableLibrary.Setup(tablelibTable);
-            globals.SetConstant("table", tablelibTable);
-
-            MathLibrary = new MathLibrary(this);
-            var mathlibTable = new LuaTable(this);
-            MathLibrary.Setup(mathlibTable);
-            globals.SetConstant("math", mathlibTable);
-
-            StringLibrary = new StringLibrary(this);
-            var strlibTable = new LuaTable(this);
-            StringLibrary.Setup(strlibTable);
-            globals.SetConstant("string", strlibTable);
-
-            //IoLibrary = new IoLibrary(this);
-            var iolibTable = new LuaTable(this);
-            //IoLibrary.Setup(iolibTable);
-            globals.SetConstant("io", iolibTable);
-
-            OSLibrary = new OSLibrary(this);
-            var oslibTable = new LuaTable(this);
-            OSLibrary.Setup(oslibTable);
-            globals.SetConstant("os", oslibTable);
-
-            //DebugLibrary = new DebugLibrary(this);
-            var debuglibTable = new LuaTable(this);
-            //DebugLibrary.Setup(debuglibTable);
-            globals.SetConstant("debug", debuglibTable);
-
-
-            InteropLibrary = new InteropLibrary(this);
-            var interopTable = new LuaTable(this);
-            InteropLibrary.Setup(interopTable);
-            globals.SetConstant("clr", interopTable);
-
-            return globals;
+            return BaseLibraries.Any(x => x.Key == name);
         }
 
-        internal BaseLibrary BaseLibrary;
-        internal StringLibrary StringLibrary;
-        internal MathLibrary MathLibrary;
-        internal OSLibrary OSLibrary;
-        internal PackageLibrary PackageLibrary;
-        internal InteropLibrary InteropLibrary;
+        internal Library.Library GetLibraryInstance(string name, CodeContext context)
+        {
+            if (BaseLibraries.ContainsKey(name))
+                return BaseLibraries[name](context);
 
+            throw new LuaRuntimeException(context, "library not found '{0}'", name);
+        }
+
+        void SetupLibraries()
+        {
+            BaseLibraries.Add("clr", x => new InteropLibrary(x));
+            BaseLibraries.Add("debug", x => new DebugLibrary(x));
+            //TODO: IO Library
+            BaseLibraries.Add("math", x => new BaseLibrary(x));
+            BaseLibraries.Add("os", x => new OSLibrary(x));
+            BaseLibraries.Add("package", x => new PackageLibrary(x));
+            BaseLibraries.Add("string", x => new StringLibrary(x));
+            //TODO: Table Library
+        }
 
         #endregion
     }

@@ -34,7 +34,7 @@ namespace IronLua.Library
 
         #region Static Types
 
-        private readonly LuaTable InteropMetatable;
+        private static LuaTable InteropMetatable;
 
         private LuaTable ImportType(string typeName, params object[] args)
         {
@@ -48,15 +48,13 @@ namespace IronLua.Library
             return ImportType(type, genNamespaces);
         }
 
-        internal LuaTable GetTypeTable(Type type)
+        internal static LuaTable GetTypeTable(Type type)
         {
             if (type != null)
             {
-                var table = new LuaTable(Context);
+                var table = new LuaTable();
                 table.SetConstant("__clrtype", type);
                 table.Metatable = InteropMetatable;
-
-                Context.SetTypeMetatable(type, InteropMetatable);
 
                 return table;
             }
@@ -72,14 +70,16 @@ namespace IronLua.Library
                 string typeName = typeNameParts.Last();
                 typeNameParts = typeNameParts.Skip(1).Reverse().Skip(1).Reverse().ToArray();
 
-                LuaTable current = null;
+                IDictionary<string,object> current = null;
 
-                if (Context.Globals.HasValue(rootNamespace))
-                    current = Context.Globals.GetValue(rootNamespace) as LuaTable;
+                var storage = Context.EngineGlobals.Storage as IDictionary<string,object>;
+
+                if (storage.ContainsKey(rootNamespace))
+                    current = storage[rootNamespace] as IDictionary<string,object>;
                 else
                 {
                     current = new LuaTable(Context);
-                    Context.Globals.SetConstant(rootNamespace, current);
+                    storage.AddOrSet(rootNamespace, current);
                 }
 
                 if (current == null)
@@ -93,23 +93,26 @@ namespace IronLua.Library
                     if (current == null)
                         throw new LuaRuntimeException(Context, "Another variable is obscuring the type's required namespace name ({0}.{1})", soFar, part);
 
-                    else if (!current.HasValue(part))
+                    else if (!current.ContainsKey(part))
                     {
                         LuaTable newTable = new LuaTable(Context);
-                        current.SetConstant(part, newTable);
+                        current.Add(part, newTable);
                         current = newTable;
                     }
                     else
-                        current = current.GetValue(part) as LuaTable;
+                        current = current[part] as IDictionary<string,object>;
 
                     soFar += "." + part;
                 }
 
                 var typeTable = GetTypeTable(type);
-                current.SetConstant(typeName, typeTable);
+                current.AddOrSet(typeName, typeTable);
+
+                Context.SetTypeMetatable(type, InteropMetatable);
                 return typeTable;
             }
 
+            Context.SetTypeMetatable(type, InteropMetatable);
             return GetTypeTable(type);
         }
 
@@ -518,7 +521,7 @@ namespace IronLua.Library
                     methodTable.SetConstant("__method", methodName);
                     foreach (var method in methods)
                         methodTable.SetConstant(method, method);
-                    methodTable.Metatable = GenerateMethodMetaTable(Context);
+                    methodTable.Metatable = GenerateMethodMetaTable();
 
                     return methodTable;
                 }
@@ -538,7 +541,7 @@ namespace IronLua.Library
                     methodTable.SetConstant("__method", methodName);
                     foreach (var method in methods)
                         methodTable.SetConstant(method, method);
-                    methodTable.Metatable = GenerateMethodMetaTable(Context);
+                    methodTable.Metatable = GenerateMethodMetaTable();
 
                     return methodTable;
                 }
@@ -616,9 +619,9 @@ namespace IronLua.Library
             return output.ToArray();
         }
 
-        private LuaTable GenerateMethodMetaTable(LuaContext context)
+        private LuaTable GenerateMethodMetaTable()
         {
-            var table = new LuaTable(context);
+            var table = new LuaTable(Context);
             table.SetConstant(Constant.CALL_METAMETHOD, (Func<object, Varargs, object>)MethodInteropCall);
             table.SetConstant(Constant.TOSTRING_METAFIELD, (Func<LuaTable, string>)MethodTableToString);
             return table;

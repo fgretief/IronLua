@@ -15,13 +15,14 @@ namespace IronLua.Library
             .AppendLine("-")
             .ToString();
 
-        public PackageLibrary(LuaContext context) 
+        public PackageLibrary(CodeContext context) 
             : base(context)
         {
         }
 
         public static object Loadlib(string libName, string funcName)
         {
+            //Maybe fall back on using InteropLibrary?
             throw new NotImplementedException();   
         }
 

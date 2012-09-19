@@ -18,7 +18,7 @@ namespace IronLua.Runtime
             return value != null && (!(value is bool) || (bool)value);
         }
 
-        public static object Length(LuaContext context, object obj)
+        public static object Length(CodeContext context, object obj)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -33,7 +33,7 @@ namespace IronLua.Runtime
             return LengthMetamethod(context, obj);
         }
 
-        public static object Concat(LuaContext context, object left, object right)
+        public static object Concat(CodeContext context, object left, object right)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -43,7 +43,7 @@ namespace IronLua.Runtime
             return ConcatMetamethod(context, left, right);
         }
 
-        public static object LengthMetamethod(LuaContext context, object obj)
+        public static object LengthMetamethod(CodeContext context, object obj)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -54,7 +54,7 @@ namespace IronLua.Runtime
             throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "get length of", BaseLibrary.Type(obj));
         }
 
-        public static object UnaryMinusMetamethod(LuaContext context, object obj)
+        public static object UnaryMinusMetamethod(CodeContext context, object obj)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -65,7 +65,7 @@ namespace IronLua.Runtime
             throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "perform arithmetic on", BaseLibrary.Type(obj));
         }
 
-        public static object IndexMetamethod(LuaContext context, object obj, object key)
+        public static object IndexMetamethod(CodeContext context, object obj, object key)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -85,7 +85,7 @@ namespace IronLua.Runtime
             throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "index", BaseLibrary.Type(obj));
         }
 
-        public static object NewIndexMetamethod(LuaContext context, object obj, object key, object value)
+        public static object NewIndexMetamethod(CodeContext context, object obj, object key, object value)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -122,7 +122,7 @@ namespace IronLua.Runtime
             throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "index", BaseLibrary.Type(obj));
         }
 
-        public static object CallMetamethod(LuaContext context, object obj, object[] args)
+        public static object CallMetamethod(CodeContext context, object obj, object[] args)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -138,7 +138,7 @@ namespace IronLua.Runtime
             throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "call", BaseLibrary.Type(obj));
         }
 
-        public static object ConcatMetamethod(LuaContext context, object left, object right)
+        public static object ConcatMetamethod(CodeContext context, object left, object right)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -151,7 +151,7 @@ namespace IronLua.Runtime
             throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "concatenate", typeName);
         }
 
-        public static object BinaryOpMetamethod(LuaContext context, ExprType op, object left, object right)
+        public static object BinaryOpMetamethod(CodeContext context, ExprType op, object left, object right)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -181,7 +181,7 @@ namespace IronLua.Runtime
             }
         }
 
-        public static object NumericMetamethod(LuaContext context, ExprType op, object left, object right)
+        public static object NumericMetamethod(CodeContext context, ExprType op, object left, object right)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -196,7 +196,7 @@ namespace IronLua.Runtime
             throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "perform arithmetic on", typeName);
         }
         
-        public static object RelationalMetamethod(LuaContext context, ExprType op, object left, object right)
+        public static object RelationalMetamethod(CodeContext context, ExprType op, object left, object right)
         {
             ContractUtils.RequiresNotNull(context, "context");
             
@@ -237,7 +237,7 @@ namespace IronLua.Runtime
             throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_WITH_ERROR, "compare", leftTypeName, rightTypeName);
         }
         
-        public static object EquateMetamethod(LuaContext context, ExprType op, object left, object right)
+        public static object EquateMetamethod(CodeContext context, ExprType op, object left, object right)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
@@ -254,9 +254,9 @@ namespace IronLua.Runtime
             else
                 return left == null ? right.Equals(left) : left.Equals(right);
         }
+        
 
-
-        static object GetRelationalMetamethod(LuaContext context, ExprType op, object left, object right)
+        static object GetRelationalMetamethod(CodeContext context, ExprType op, object left, object right)
         {
             var methodName = GetMethodName(op);
             var metamethodLeft = GetMetamethod(context, left, methodName);
@@ -270,7 +270,7 @@ namespace IronLua.Runtime
             return Constant.METAMETHODS.TryGetValue(op, out methodName) ? methodName : null;
         }
 
-        public static object GetMetamethod(LuaContext context, object obj, string methodName)
+        public static object GetMetamethod(CodeContext context, object obj, string methodName)
         {
             LuaTable table;
 

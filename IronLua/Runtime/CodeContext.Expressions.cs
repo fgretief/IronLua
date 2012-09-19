@@ -10,6 +10,7 @@ using System.Reflection;
 using Microsoft.Scripting.Utils;
 using Microsoft.Scripting.Runtime;
 using IronLua.Compiler;
+using Microsoft.Scripting;
 
 namespace IronLua.Runtime
 {
@@ -18,6 +19,11 @@ namespace IronLua.Runtime
     //as the functions which back their usage).
     internal sealed partial class CodeContext
     {
+        static CodeContext()
+        {
+            FunctionStackVariable = Expr.Variable(typeof(List<FunctionStack>), "$function_stacks$");
+        }
+
         private static readonly Dictionary<string, MethodInfo> _MethodInfoCache = new Dictionary<string, MethodInfo>();
         /// <summary>
         /// Gets the private instance method represented by the given <paramref name="methodName"/>
@@ -28,6 +34,14 @@ namespace IronLua.Runtime
             if (!_MethodInfoCache.ContainsKey(methodName))
                 _MethodInfoCache.Add(methodName, typeof(CodeContext).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic));
             return _MethodInfoCache[methodName];
+        }
+        
+        /// <summary>
+        /// Calls a backing method with the given arguments
+        /// </summary>
+        private static Expr CallBackingMethod(string methodName, CodeContext context, params Expr[] args)
+        {
+            return Expr.Call(Expr.Constant(context), GetBackingMethod(methodName), args);
         }
 
         #region Start/Stop Execution
@@ -44,9 +58,9 @@ namespace IronLua.Runtime
         /// It also adds all the BaseLibrary stuff to this scope to make it accessible
         /// to Lua.
         /// </remarks>
-        public static Expr OnStartExecute(CodeContext context, Expr executingScope)
+        public static Expr OnStartExecute(CodeContext context, Expr executingScope, SourceUnit sourceUnit)
         {
-            return Expr.Call(Expr.Constant(context), GetBackingMethod("_OnStartExecute"), executingScope);
+            return CallBackingMethod("_OnStartExecute", context, executingScope, Expr.Constant(sourceUnit));
         }
 
         /// <summary>
@@ -64,27 +78,39 @@ namespace IronLua.Runtime
         /// </remarks>
         public static Expr OnFinishExecute(CodeContext context)
         {
-            return Expr.Call(Expr.Constant(context), GetBackingMethod("_OnFinishExecute"));
+            return CallBackingMethod("_OnFinishExecute", context);
         }
 
 
-        private void _OnStartExecute(IDynamicMetaObjectProvider executingScope)
+        private void _OnStartExecute(IDynamicMetaObjectProvider executingScope, SourceUnit sourceUnit)
         {
             ContractUtils.Requires(executingScope is IDictionary<string, object>);
 
             ExecutingScope = executingScope as Scope;
             ExecutingScopeStorage = ExecutingScope.Storage;
+
+            //We should update the context under which this LuaTable is executing
+            //so that it resolves metamethod overrides correctly.
+            //TODO: Decide whether we should keep this if it is non-null, it may be that this is coming from a different
+            //      CodeContext which has some metamethod stuff set particularly for this scope, or its contents, and we
+            //      shouldn't change this.
+            if (ExecutingScopeStorage is LuaTable)
+                (ExecutingScopeStorage as LuaTable).Context = this;
+
             _EnvironmentMappings.Clear();   //We clear this here as opposed to in OnFinishExecute in case the last execution failed
-            
-            Language.BaseLibrary.Setup(executingScope as IDictionary<string, object>);
+
+            _BaseLibrary.Setup(executingScope as IDictionary<string, object>);
         }
 
         private void _OnFinishExecute()
         {
-            Language.BaseLibrary.Clean(ExecutingScopeStorage as IDictionary<string, object>);
+            _BaseLibrary.Clean(ExecutingScopeStorage as IDictionary<string, object>);
 
             ExecutingScope = null;
             ExecutingScopeStorage = null;
+            _LoadedPackages.Clear();
+            _EnvironmentMappings.Clear();
+            _FunctionStacks.Clear();
         }
 
         #endregion
@@ -94,10 +120,109 @@ namespace IronLua.Runtime
         public static Expr GetExecutionEnvironment(CodeContext context, LuaScope scope)
         {
             LuaScope current = scope;
-            while (!context.HasCustomEnvironment(current))
+            while (current != null && !context.HasCustomEnvironment(current))
                 current = current.GetParent();
+
+            if (current != null)
+                return Expr.Constant(context.GetFunctionEnvironment(scope));
+
+            return Expr.Constant(context.ExecutingScopeStorage);
         }
 
         #endregion
+
+        #region Execution Stack
+
+        public static Expr FunctionStackVariable
+        { get; private set; }
+
+        public static Expr PushFunctionStack(CodeContext context, FunctionStack function)
+        {
+            return CallBackingMethod("_PushFunctionStack", context, Expr.Constant(function));
+        }
+
+        public static Expr PopFunctionStack(CodeContext context)
+        {
+            return CallBackingMethod("_PopFunctionStack", context);
+        }
+
+        private List<FunctionStack> _PushFunctionStack(FunctionStack function)
+        {
+            _FunctionStacks.Add(function);
+            return _FunctionStacks;
+        }
+
+        private void _PopFunctionStack()
+        {
+            _FunctionStacks.RemoveAt(_FunctionStacks.Count - 1);
+        }
+
+        #region Variable Access
+        
+        private void _UpdateLastVariableAccess(VariableAccess variable, object value)
+        {
+            variable.Value = value;
+
+            switch (variable.Operation)
+            {
+                case AccessType.LocalGet:
+                case AccessType.LocalSet:
+                    _FunctionStacks.Last().Locals.Push(variable);
+                    break;
+                case AccessType.GlobalGet:
+                case AccessType.GlobalSet:
+                    variableAccessStack.Clear();
+                    break;
+            }
+            variableAccessStack.Push(variable);
+        }
+
+        public static Expr UpdateLastVariableAccess(CodeContext context, VariableAccess variable, Expr value)
+        {
+            return CallBackingMethod("_UpdateLastVariableAccess", context, Expr.Constant(variable), value);
+        }
+
+        private void _OnScopeEnter(LuaScope scope)
+        {
+            accessStackExpectedSize.Push(variableAccessStack.Count);
+        }
+
+        private void _OnScopeLeave()
+        {
+            var expectedSize = accessStackExpectedSize.Pop();
+
+            Stack<VariableAccess> backup = new Stack<VariableAccess>();
+            while (variableAccessStack.Count > expectedSize + accessStackSizeOffset)
+            {
+                switch (GetRootOperation())
+                {
+                    case AccessType.GlobalGet:
+                    case AccessType.GlobalSet:
+                        RemoveTopOperation(backup);
+                        break;
+                    default:
+                        RemoveTopOperation();
+                        break;
+                }
+            }
+
+            while (backup.Count > 0)
+                _FunctionStacks.Last().Locals.Push(backup.Pop());
+        }
+
+        public static Expr OnScopeEnter(CodeContext context, LuaScope scope)
+        {
+            return CallBackingMethod("_OnScopeEnter", context, Expr.Constant(scope));
+        }
+
+        public static Expr OnScopeLeave(CodeContext context)
+        {
+            return CallBackingMethod("_OnScopeLeave", context);
+        }
+
+        #endregion
+
+        #endregion
+
     }
 }
