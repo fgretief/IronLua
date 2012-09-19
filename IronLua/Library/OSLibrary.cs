@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using IronLua.Runtime;
+using System.Collections.Generic;
 
 namespace IronLua.Library
 {
@@ -49,18 +50,18 @@ namespace IronLua.Library
             }
         }
 
-        public override void Setup(LuaTable table)
+        public override void Setup(IDictionary<string, object> table)
         {
-            table.SetConstant("time", (Func<LuaTable, double>)Time );
-            table.SetConstant("difftime", (Func<double, double, double>) ((t2, t1) => t2 - t1));
+            table.AddOrSet("time", (Func<LuaTable, double>)Time );
+            table.AddOrSet("difftime", (Func<double, double, double>) ((t2, t1) => t2 - t1));
 
-            //table.SetConstant("date", (Func<object, object>)Date); // TODO
+            //table.AddOrSet("date", (Func<object, object>)Date); // TODO
 
-            table.SetConstant("exit", (Action<double>)(e => Environment.Exit((int)e)));
-            table.SetConstant("getenv", (Func<string, string>) Environment.GetEnvironmentVariable);
+            table.AddOrSet("exit", (Action<double>)(e => Environment.Exit((int)e)));
+            table.AddOrSet("getenv", (Func<string, string>) Environment.GetEnvironmentVariable);
 
-            table.SetConstant("remove", (Func<string, object>) Delete);
-            table.SetConstant("rename", (Func<string, string, object>) Rename);
+            table.AddOrSet("remove", (Func<string, object>) Delete);
+            table.AddOrSet("rename", (Func<string, string, object>) Rename);
         }
     }
 }

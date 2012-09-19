@@ -60,7 +60,13 @@ namespace IronLua.Runtime
 
         public class FunctionCall
         {
+            private FunctionCall()
+            {
+                Locals = new Stack<VariableAccess>();
+            }
+
             public FunctionCall(SourceSpan functionLocation, FunctionType type, string identifier, string fileName = null)
+                : this()
             {
                 FunctionLocation = functionLocation;
                 Type = type;
@@ -69,6 +75,7 @@ namespace IronLua.Runtime
             }
 
             public FunctionCall(SourceSpan functionLocation, FunctionType type, IEnumerable<string> identifiers, string fileName = null)
+                : this()
             {
                 FunctionLocation = functionLocation;
                 Type = type;
@@ -85,6 +92,9 @@ namespace IronLua.Runtime
             public string MethodName { get; private set; }
             public SourceSpan FunctionLocation { get; private set; }
             public FunctionType Type { get; private set; }
+
+            public Stack<VariableAccess> Locals
+            { get; private set; }
         }
 
         public enum FunctionType
@@ -111,6 +121,9 @@ namespace IronLua.Runtime
         public void PopFunctionCall()
         {
             var call = CallStack.Pop();
+            variableAccessStack.Clear();
+            accessStackExpectedSize.Clear();
+            accessStackSizeOffset = 0;
         }
 
         public static Expression MakePushFunctionCall(LuaContext context, FunctionCall call)
@@ -196,9 +209,21 @@ namespace IronLua.Runtime
         }
 
         public void UpdateLastVariableAccess(VariableAccess variable, object value)
-        {            
+        {
+            variable.Value = value;
+
+            switch(variable.Operation)
+            {
+                case AccessType.LocalGet:
+                case AccessType.LocalSet:
+                    CallStack.Peek().Locals.Push(variable);
+                    break;
+                case AccessType.GlobalGet:
+                case AccessType.GlobalSet:
+                    variableAccessStack.Clear();
+                    break;
+            }
             variableAccessStack.Push(variable);
-            LastVariableAccess.Value = value;
         }
 
         private static readonly MethodInfo UpdateLastVariableAccessMethodInfo = typeof(LuaTrace).GetMethod("UpdateLastVariableAccess");
@@ -206,22 +231,8 @@ namespace IronLua.Runtime
         {
             return Expression.Call(Expression.Constant(context.Trace), UpdateLastVariableAccessMethodInfo, Expression.Constant(variable), value);
         }
-
-        public IEnumerable<KeyValuePair<string,object>> AccessibleVariables
-        {
-            get
-            {
-                foreach (var v in variableAccessStack)
-                    switch (v.Operation)
-                    { 
-                        case AccessType.GlobalSet:
-                        case AccessType.LocalSet:
-                            yield return new KeyValuePair<string, object>(v.VariableName, v.Value);
-                            break;
-                    }
-            }
-        }
-
+        
+        
         private static readonly MethodInfo OnScopeEnterMethodInfo = typeof(LuaTrace).GetMethod("OnScopeEnter");
         private static readonly MethodInfo OnScopeLeaveMethodInfo = typeof(LuaTrace).GetMethod("OnScopeLeave");
         public void OnScopeEnter()
@@ -249,7 +260,7 @@ namespace IronLua.Runtime
             }
 
             while (backup.Count > 0)
-                variableAccessStack.Push(backup.Pop());
+                CallStack.Peek().Locals.Push(backup.Pop());
         }
 
         private AccessType GetRootOperation()
@@ -274,9 +285,10 @@ namespace IronLua.Runtime
 
         private void RemoveTopOperation(Stack<VariableAccess> store = null)
         {
-            while (variableAccessStack.Count > 0)
+            var stack = CallStack.Peek().Locals;
+            while (stack.Count > 0)
             {
-                var v = variableAccessStack.Pop();
+                var v = stack.Pop();
                 if (store != null)
                     store.Push(v);
                 switch (v.Operation)
@@ -301,6 +313,17 @@ namespace IronLua.Runtime
         public static Expression MakeOnScopeLeave(LuaContext context)
         {
             return Expression.Call(Expression.Constant(context.Trace), OnScopeLeaveMethodInfo);
+        }
+        
+        public VariableAccess GetVariableAccess(int stackLevel, int variableIndex)
+        {
+            if (CallStack.Count < stackLevel)
+                throw new LuaRuntimeException(_context, "The given stack level was invalid");
+            var callStackEntry =  CallStack.ElementAt(stackLevel - 1);
+
+            if (callStackEntry.Locals.Count < variableIndex)
+                return null;
+            return callStackEntry.Locals.Reverse().ElementAt(variableIndex - 1);
         }
 
         #endregion

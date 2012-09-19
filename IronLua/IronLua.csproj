@@ -72,6 +72,8 @@
     <Compile Include="Library\OSLibrary.cs" />
     <Compile Include="Library\PackageLibrary.cs" />
     <Compile Include="Runtime\Binder\LuaBinder.cs" />
+    <Compile Include="Runtime\CodeContext.cs" />
+    <Compile Include="Runtime\CodeContext.Expressions.cs" />
     <Compile Include="Runtime\LuaOptions.cs" />
     <Compile Include="Runtime\LuaContext.cs" />
     <Compile Include="Hosting\LuaOptionsParser.cs" />
@@ -125,6 +127,7 @@
     <Compile Include="Runtime\RuntimeHelpers.cs" />
     <Compile Include="Runtime\Varargs.cs" />
     <Compile Include="Util\CharExtensions.cs" />
+    <Compile Include="Util\DictionaryExtensions.cs" />
     <Compile Include="Util\EnumerableExtensions.cs" />
     <Compile Include="Util\HashHelpers.cs" />
     <Compile Include="Util\ParameterInfoExtensions.cs" />

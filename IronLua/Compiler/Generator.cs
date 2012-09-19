@@ -592,11 +592,11 @@ namespace IronLua.Compiler
         }
 
 
-        Expr CreateGlobalGetMember(string identifier, LuaTable globals, LuaScope scope)
+        Expr CreateGlobalGetMember(string identifier, IDictionary<string,object> globals, LuaScope scope)
         {
             var temp = Expr.Parameter(typeof(object));
 
-            if (globals.HasValue(identifier))
+            if (globals.ContainsKey(identifier))
                 return Expr.Block(
                     typeof(object),
                     scope.AllLocals().Add(temp),
@@ -631,7 +631,7 @@ namespace IronLua.Compiler
                     if (scope.TryGetLocal(variable.Identifier, out local))
                         return local;
 
-                    return CreateGlobalGetMember(variable.Identifier, context.Globals, scope);
+                    return CreateGlobalGetMember(variable.Identifier, context.DomainManager.Globals.Storage, scope);
                     
                     //return Expr.Dynamic(context.CreateGetMemberBinder(variable.Identifier, false),
                     //                    typeof(object), Expr.Constant(context.Globals));
@@ -750,7 +750,7 @@ namespace IronLua.Compiler
                 );
         }
 
-        Expr CreateGlobalSetMember(string identifier, Expr globals, LuaScope scope, Expr value)
+        Expr CreateGlobalSetMember(string identifier, LuaScope scope, Expr value)
         {
             var scopeAssign = Expr.Dynamic(context.CreateSetMemberBinder(identifier, false),
                                     typeof(object), scope.GetDlrGlobals(), value);
@@ -771,7 +771,7 @@ namespace IronLua.Compiler
                         return Expr.Assign(local, value);
 
 
-                    return CreateGlobalSetMember(variable.Identifier, Expr.Constant(context.Globals), scope, value);
+                    return CreateGlobalSetMember(variable.Identifier, scope, value);
 
                     //return Expr.Dynamic(context.CreateSetMemberBinder(variable.Identifier, false),
                     //                    typeof(object), Expr.Constant(context.Globals), value);
@@ -807,7 +807,7 @@ namespace IronLua.Compiler
                 if (isLocal)
                     return WrapVariableAccess(Expr.Assign(local, value), new LuaTrace.VariableAccess(identifiers[0], LuaTrace.AccessType.LocalSet));
 
-                return CreateGlobalSetMember(firstId, Expr.Constant(context.Globals), scope, value);
+                return CreateGlobalSetMember(firstId, scope, value);
                 //return Expr.Dynamic(context.CreateSetMemberBinder(firstId, false),
                 //                            typeof(object),
                 //                            Expr.Constant(context.Globals),
@@ -818,7 +818,7 @@ namespace IronLua.Compiler
             if (isLocal)
                 expr = WrapVariableAccess(local, new LuaTrace.VariableAccess(identifiers[0], LuaTrace.AccessType.LocalGet));
             else
-                expr = CreateGlobalGetMember(firstId, context.Globals, scope);
+                expr = CreateGlobalGetMember(firstId, context.DomainManager.Globals.Storage, scope);
                     //Expr.Dynamic(context.CreateGetMemberBinder(firstId, false),
                     //                        typeof(object),
                     //                        Expr.Constant(context.Globals));

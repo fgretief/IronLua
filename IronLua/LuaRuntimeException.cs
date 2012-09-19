@@ -12,14 +12,14 @@ namespace IronLua
     [Serializable]
     public class LuaRuntimeException : LuaException
     {
-        public LuaRuntimeException(LuaContext context, string message = null, Exception inner = null)
+        public LuaRuntimeException(CodeContext context, string message = null, Exception inner = null)
             : base(message, inner)
         {
             Context = context;
             stack = new Stack<LuaTrace.FunctionCall>(context.Trace.CallStack.Reverse());
         }
 
-        public LuaRuntimeException(LuaContext context, string format, params object[] args)
+        public LuaRuntimeException(CodeContext context, string format, params object[] args)
             : base(String.Format(format, args))
         {
             Context = context;
@@ -34,7 +34,7 @@ namespace IronLua
         /// <summary>
         /// Gets the current execution context in which the error occured
         /// </summary>
-        public LuaContext Context
+        public CodeContext Context
         { get; private set; }
 
         /// <summary>
@@ -199,18 +199,6 @@ namespace IronLua
 
             return stackTrace;
         }
-
-
-        public IEnumerable<string> AccessibleVariables
-        {
-            get { return Context.Trace.AccessibleVariables.Reverse().Select(x => x.Key); }
-        }
-
-        public IEnumerable<object> GetVariableValues(string identifier)
-        {
-            return Context.Trace.AccessibleVariables.Reverse().Where(x => x.Key == identifier).Select(x => x.Value);
-        }
-        
 
         /// <summary>
         /// Gets the formatted list of invoked Lua expressions leading up to this error

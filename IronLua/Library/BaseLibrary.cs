@@ -478,36 +478,68 @@ namespace IronLua.Library
             return expr.Compile();
         }
 
-        public override void Setup(LuaTable table)
+        public override void Setup(IDictionary<string,object> table)
         {
-            table.SetValue("assert", (Func<object, object, object[], Varargs>)Assert);
-            table.SetValue("collectgarbage", (Action<string, string>)CollectGarbage);
-            table.SetValue("dofile", (Func<string, object>)DoFile);
-            table.SetValue("error", (Action<object, object>)Error);
-            table.SetValue("_ENV", table);
-            table.SetValue("_G", table);
-            table.SetValue("getfenv", (Func<object, object>)GetFEnv);
-            table.SetValue("getmetatable", (Func<object, object>)GetMetatable);
-            table.SetValue("ipairs", (Func<LuaTable, Varargs>)IPairs);
-            table.SetValue("load", (Func<Delegate, string, Varargs>)Load);
-            table.SetValue("loadfile", (Func<string, Varargs>)LoadFile);
-            table.SetValue("loadstring", (Func<string, string, Varargs>)LoadString);
-            table.SetValue("next", (Func<LuaTable, object, Varargs>)Next);
-            table.SetValue("pairs", (Func<LuaTable, Varargs>)Pairs);
-            table.SetValue("pcall", (Func<Delegate, object[], Varargs>)PCall);
-            table.SetValue("print", (Action<object[]>)Print);
-            table.SetValue("rawequal", (Func<object, object, bool>)RawEqual);
-            table.SetValue("rawget", (Func<LuaTable, object, object>)RawGet);
-            table.SetValue("rawset", (Func<LuaTable, object, object, object>)RawSet);
-            table.SetValue("select", (Func<object, object[], Varargs>)Select);
-            table.SetValue("setfenv", (Func<object, LuaTable, object>)SetFEnv);
-            table.SetValue("setmetatable", (Func<LuaTable, LuaTable, LuaTable>)SetMetatable);
-            table.SetValue("tonumber", (Func<object, object, object>)ToNumber);
-            table.SetValue("tostring", (Func<object, object>)ToStringEx);
-            table.SetValue("type", (Func<object, string>)Type);
-            table.SetValue("unpack", (Func<LuaTable, object, object, Varargs>)Unpack);
-            table.SetValue("_VERSION", Constant.LUA_VERSION);
-            table.SetValue("xpcall", (Func<Delegate, Delegate, Varargs>)XPCall);
+            table.AddNotPresent("assert", (Func<object, object, object[], Varargs>)Assert);
+            table.AddNotPresent("collectgarbage", (Action<string, string>)CollectGarbage);
+            table.AddNotPresent("dofile", (Func<string, object>)DoFile);
+            table.AddNotPresent("error", (Action<object, object>)Error);
+            table.AddNotPresent("_ENV", table);
+            table.AddNotPresent("_G", table);
+            table.AddNotPresent("getfenv", (Func<object, object>)GetFEnv);
+            table.AddNotPresent("getmetatable", (Func<object, object>)GetMetatable);
+            table.AddNotPresent("ipairs", (Func<LuaTable, Varargs>)IPairs);
+            table.AddNotPresent("load", (Func<Delegate, string, Varargs>)Load);
+            table.AddNotPresent("loadfile", (Func<string, Varargs>)LoadFile);
+            table.AddNotPresent("loadstring", (Func<string, string, Varargs>)LoadString);
+            table.AddNotPresent("next", (Func<LuaTable, object, Varargs>)Next);
+            table.AddNotPresent("pairs", (Func<LuaTable, Varargs>)Pairs);
+            table.AddNotPresent("pcall", (Func<Delegate, object[], Varargs>)PCall);
+            table.AddNotPresent("print", (Action<object[]>)Print);
+            table.AddNotPresent("rawequal", (Func<object, object, bool>)RawEqual);
+            table.AddNotPresent("rawget", (Func<LuaTable, object, object>)RawGet);
+            table.AddNotPresent("rawset", (Func<LuaTable, object, object, object>)RawSet);
+            table.AddNotPresent("select", (Func<object, object[], Varargs>)Select);
+            table.AddNotPresent("setfenv", (Func<object, LuaTable, object>)SetFEnv);
+            table.AddNotPresent("setmetatable", (Func<LuaTable, LuaTable, LuaTable>)SetMetatable);
+            table.AddNotPresent("tonumber", (Func<object, object, object>)ToNumber);
+            table.AddNotPresent("tostring", (Func<object, object>)ToStringEx);
+            table.AddNotPresent("type", (Func<object, string>)Type);
+            table.AddNotPresent("unpack", (Func<LuaTable, object, object, Varargs>)Unpack);
+            table.AddNotPresent("_VERSION", Constant.LUA_VERSION);
+            table.AddNotPresent("xpcall", (Func<Delegate, Delegate, Varargs>)XPCall);
+        }
+
+        public void Clean(IDictionary<string,object> table)
+        {
+            table.RemoveIfEqual("assert", (Func<object, object, object[], Varargs>)Assert);
+            table.RemoveIfEqual("collectgarbage", (Action<string, string>)CollectGarbage);
+            table.RemoveIfEqual("dofile", (Func<string, object>)DoFile);
+            table.RemoveIfEqual("error", (Action<object, object>)Error);
+            table.RemoveIfEqual("_ENV", table);
+            table.RemoveIfEqual("_G", table);
+            table.RemoveIfEqual("getfenv", (Func<object, object>)GetFEnv);
+            table.RemoveIfEqual("getmetatable", (Func<object, object>)GetMetatable);
+            table.RemoveIfEqual("ipairs", (Func<LuaTable, Varargs>)IPairs);
+            table.RemoveIfEqual("load", (Func<Delegate, string, Varargs>)Load);
+            table.RemoveIfEqual("loadfile", (Func<string, Varargs>)LoadFile);
+            table.RemoveIfEqual("loadstring", (Func<string, string, Varargs>)LoadString);
+            table.RemoveIfEqual("next", (Func<LuaTable, object, Varargs>)Next);
+            table.RemoveIfEqual("pairs", (Func<LuaTable, Varargs>)Pairs);
+            table.RemoveIfEqual("pcall", (Func<Delegate, object[], Varargs>)PCall);
+            table.RemoveIfEqual("print", (Action<object[]>)Print);
+            table.RemoveIfEqual("rawequal", (Func<object, object, bool>)RawEqual);
+            table.RemoveIfEqual("rawget", (Func<LuaTable, object, object>)RawGet);
+            table.RemoveIfEqual("rawset", (Func<LuaTable, object, object, object>)RawSet);
+            table.RemoveIfEqual("select", (Func<object, object[], Varargs>)Select);
+            table.RemoveIfEqual("setfenv", (Func<object, LuaTable, object>)SetFEnv);
+            table.RemoveIfEqual("setmetatable", (Func<LuaTable, LuaTable, LuaTable>)SetMetatable);
+            table.RemoveIfEqual("tonumber", (Func<object, object, object>)ToNumber);
+            table.RemoveIfEqual("tostring", (Func<object, object>)ToStringEx);
+            table.RemoveIfEqual("type", (Func<object, string>)Type);
+            table.RemoveIfEqual("unpack", (Func<LuaTable, object, object, Varargs>)Unpack);
+            table.RemoveIfEqual("_VERSION", Constant.LUA_VERSION);
+            table.RemoveIfEqual("xpcall", (Func<Delegate, Delegate, Varargs>)XPCall);
         }
     }
 }

@@ -17,30 +17,27 @@ using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
 using Microsoft.Scripting.Actions;
 using System.Linq;
+using Microsoft.Scripting.Debugging.CompilerServices;
+using Debugging = Microsoft.Scripting.Debugging;
 
 namespace IronLua.Runtime
 {
     public sealed class LuaContext : LanguageContext
     {
         private readonly DynamicCache _dynamicCache;
-        private readonly LuaTable _globals;
+
+        [ThreadStatic]
         private readonly LuaTrace _trace;
 
         public LuaContext(ScriptDomainManager manager, IDictionary<string, object> options = null)
             : base(manager)
         {
             // TODO: options
-
+            
             _binder = new LuaBinder(this);
             _dynamicCache = new DynamicCache(this);
-            _globals = new LuaTable(this);
             _trace = new LuaTrace(this);
             _metatables = SetupMetatables();
-        }
-
-        internal LuaTable Globals
-        {
-            get { return _globals; }
         }
 
         internal DynamicCache DynamicCache
@@ -177,79 +174,14 @@ namespace IronLua.Runtime
         /// <inheritdoc/>
         public override Scope CreateScope()
         {
-            var table = new LuaTable(this);
+            var table = new LuaTable();
             SetupLibraries(table);
+            
+            var scope = new Scope(table as IDynamicMetaObjectProvider);
 
-            //Copy _globals into this scope's store
-            Varargs obj = null;
-            do
-            {
-                obj = _globals.Next(obj);
-                table.SetValue(obj.First(), obj.Last());
-            } while (obj != null);
-
-            var scope = new Scope(table);
+            
 
             return scope;
-        }
-
-        #endregion
-
-        #region Metatable management
-
-        readonly Dictionary<Type, LuaTable> _metatables;
-
-        Dictionary<Type, LuaTable> SetupMetatables()
-        {
-            return new Dictionary<Type, LuaTable>()
-            {
-                {typeof(bool), new LuaTable(this)},
-                {typeof(double), new LuaTable(this)},
-                {typeof(string), new LuaTable(this)},
-                {typeof(Delegate), new LuaTable(this)},
-            };
-        }
-
-        internal LuaTable GetTypeMetatable(object obj)
-        {
-            if (obj == null)
-                return null;
-            
-            LuaTable table;
-
-            if (obj is BoundMemberTracker)
-            {
-                var tracker = obj as BoundMemberTracker;
-
-                if (tracker.ObjectInstance is LuaTable)
-                {
-                    if ((tracker.ObjectInstance as LuaTable).Metatable != null)
-                        return (tracker.ObjectInstance as LuaTable).Metatable;
-                }
-
-                if (_metatables.TryGetValue(tracker.ObjectInstance.GetType(), out table))
-                    return table;
-            }
-
-            var objType = obj.GetType();
-
-            if (_metatables.TryGetValue(objType, out table))
-                return table;
-
-            throw new LuaRuntimeException(this, "Could not find metatable for '{0}'", objType.FullName);
-        }
-
-        internal LuaTable SetTypeMetatable(Type type, LuaTable metatable)
-        {
-            if (type == null || metatable == null)
-                return null;
-
-            LuaTable table;
-            if (_metatables.TryGetValue(type, out table))
-                return table;
-
-            _metatables.Add(type, metatable);
-            return metatable;
         }
 
         #endregion
@@ -274,65 +206,85 @@ namespace IronLua.Runtime
             return obj;
         }
 
-        /// <summary>
-        /// Imports the given type into this engine's list of accessible types
-        /// </summary>
-        /// <param name="type">The type to import into this engine's type definition tables</param>
-        public void ImportType(Type type)
-        {
-            InteropLibrary.ImportType(type, true);
-        }
-
-        /// <summary>
-        /// Sets a globally accessible variable for this scope
-        /// </summary>
-        /// <param name="key">The key identifying the variable to set</param>
-        /// <param name="value">The value to assign to the variable by default</param>
-        public void SetGlobalVariable(string key, object value)
-        {
-            Globals.SetValue(key, ToLuaObject(value));
-        }
-
-        /// <summary>
-        /// Sets a globally accessible constant variable for this scope
-        /// </summary>
-        /// <param name="key">The key by which the constant is identified</param>
-        /// <param name="value">The value to assign to the constant</param>
-        public void SetGlobalConstant(string key, object value)
-        {
-            Globals.SetConstant(key, ToLuaObject(value));
-        }
-
-        /// <summary>
-        /// Gets a global variable from this scope
-        /// </summary>
-        /// <param name="key">The key identifying the variable or constant</param>
-        /// <returns>Returns the value of the variable or constant with the given identifier</returns>
-        public dynamic GetGlobalVariable(string key)
-        {
-            return Globals.GetValue(key);
-        }
-
-        /// <summary>
-        /// Gets a global variable from this scope and casts it to the specified type
-        /// </summary>
-        /// <typeparam name="T">The type which the variable should be cast to</typeparam>
-        /// <param name="key">The key identifying the variable or constant</param>
-        /// <returns>Returns the value of the variable or constant cast to the specified type</returns>
-        public T GetGlobalVariable<T>(string key)
-        {
-            return (T)Convert.ChangeType(Globals.GetValue(key), typeof(T));
-        }
-
         #endregion
 
         #region Trace/Debug
+        
+        private Debugging.CompilerServices.DebugContext _debugContext;
+        private Debugging.ITracePipeline _tracePipeline;
+
+        //[ThreadStatic]
+        //private static Stack<LuaTracebackListener> _tracebackListeners;
+        //private static int _tracingThreads;
+
+        //internal Debugging.CompilerServices.DebugContext DebugContext
+        //{
+        //    get
+        //    {
+        //        EnsureDebugContext();
+
+        //        return _debugContext;
+        //    }
+        //}
+
+        //internal void EnsureDebugContext()
+        //{
+        //    if (_debugContext == null || _tracePipeline == null)
+        //    {
+        //        lock (this)
+        //        {
+        //            if (_debugContext == null)
+        //            {
+        //                _debugContext = Debugging.CompilerServices.DebugContext.CreateInstance();
+        //                _tracePipeline = Debugging.TracePipeline.CreateInstance(_debugContext);
+        //            }
+        //        }
+        //    }
+
+        //    if (_tracebackListeners == null)
+        //    {
+        //        _tracebackListeners = new Stack<LuaTracebackListener>();
+        //        // push the default listener
+        //        _tracebackListeners.Push(new LuaTracebackListener(this));
+        //    }
+        //}
+
+        //internal Debugging.ITracePipeline TracePipeline
+        //{
+        //    get
+        //    {
+        //        return _tracePipeline;
+        //    }
+        //}
 
         internal LuaTrace Trace
         { get { return _trace; } }
 
         #endregion
-        
+
+        #region Interop Storage
+
+        //Stores LuaTables which represent namespace/Type paths. For example:
+        //System.Collections.Generic.Dictionary<TKey,TValue> would have
+        //System                                    - LuaTable
+        //System.Collections                        - LuaTable
+        //System.Collections.Generic                - LuaTable
+        //System.Collections.Generic.Dictionary<..> - LuaTable (CLR type wrapper)
+        private readonly Dictionary<string, LuaTable> _clrNamespaces = new Dictionary<string, LuaTable>();
+
+        internal LuaTable GetCLRNamespace(string @namespace)
+        {
+            if (_clrNamespaces.ContainsKey(@namespace))
+                return _clrNamespaces[@namespace];
+
+            var typeTable = InteropLibrary.GetTypeTable(Type.GetType(@namespace, false));
+            if(typeTable != null)
+                _clrNamespaces.Add(@namespace, typeTable);
+            return typeTable;
+        }
+
+        #endregion
+
         public override ScriptCode CompileSourceCode(SourceUnit sourceUnit, CompilerOptions options, ErrorSink errorSink)
         {
             ContractUtils.RequiresNotNull(sourceUnit, "sourceUnit");

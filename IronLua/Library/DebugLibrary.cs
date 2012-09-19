@@ -12,9 +12,9 @@ namespace IronLua.Library
             : base(context)
         { }
         
-        public override void Setup(Runtime.LuaTable table)
+        public override void Setup(IDictionary<string, object> table)
         {
-            table.SetValue("getlocal", (Func<object, object, Varargs>)GetLocal);
+            table.AddOrSet("getlocal", (Func<object, object, Varargs>)GetLocal);
         }
 
         private Varargs GetLocal(object stackLevel, object varIndex)

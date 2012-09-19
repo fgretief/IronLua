@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using IronLua.Runtime;
+using System.Collections.Generic;
 
 namespace IronLua.Library
 {
@@ -29,11 +30,11 @@ namespace IronLua.Library
             throw new NotImplementedException();    
         }
 
-        public override void Setup(LuaTable table)
+        public override void Setup(IDictionary<string, object> table)
         {
-            table.SetConstant("config", ConfigStr);
+            table.AddOrSet("config", ConfigStr);
 
-            table.SetConstant("cpath", 
+            table.AddOrSet("cpath", 
                 Environment.GetEnvironmentVariable("LUA_CPATH_5_2") ??
                     Environment.GetEnvironmentVariable("LUA_CPATH") ??
                         String.Join(";", new[]
@@ -43,7 +44,7 @@ namespace IronLua.Library
                             ".\\?.dll"
                         }));
 
-            table.SetConstant("path",
+            table.AddOrSet("path",
                 Environment.GetEnvironmentVariable("LUA_PATH_5_2") ??
                     Environment.GetEnvironmentVariable("LUA_PATH") ??
                         String.Join(";", new[] 
@@ -55,12 +56,12 @@ namespace IronLua.Library
                             ".\\?.lua"
                         }));
 
-            table.SetConstant("loaded", new LuaTable(Context));
-            table.SetConstant("preload", new LuaTable(Context));
-            table.SetConstant("searchers", new LuaTable(Context)); // TODO: fill with searchers
+            table.AddOrSet("loaded", new LuaTable(Context));
+            table.AddOrSet("preload", new LuaTable(Context));
+            table.AddOrSet("searchers", new LuaTable(Context)); // TODO: fill with searchers
 
-            table.SetConstant("loadlib", (Func<string, string, object>)Loadlib);
-            table.SetConstant("searchpath", (Func<string, string, string, string, object>) SearchPath);
+            table.AddOrSet("loadlib", (Func<string, string, object>)Loadlib);
+            table.AddOrSet("searchpath", (Func<string, string, string, string, object>) SearchPath);
         }
     }
 }

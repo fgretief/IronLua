@@ -13,23 +13,23 @@ namespace IronLua.Library
 {
     class InteropLibrary : Library
     {
-        public InteropLibrary(LuaContext context, params Type[] types)
+        public InteropLibrary(CodeContext context, params Type[] types)
             : base(context)
         {
             InteropMetatable = GenerateMetatable();
         }
-        
-        public override void Setup(Runtime.LuaTable table)
+
+        public override void Setup(IDictionary<string, object> table)
         {
-            table.SetConstant("import", (Func<string,object[], LuaTable>)ImportType);
-            table.SetConstant("method", (Func<object, string, object>)InteropGetMethod);
-            table.SetConstant("call", (Func<object, string, object[], object>)InteropCallMethod);
-            table.SetConstant("setvalue", (Func<object, string, object, object>)InteropSetValue);
-            table.SetConstant("getvalue", (Func<object, string, object>)InteropGetValue);
-            table.SetConstant("subscribe", (Action<object, string, Delegate>)InteropSubscribeEvent);
-            table.SetConstant("unsubscribe", (Action<object, string, Delegate>)InteropUnsubscribeEvent);
-            table.SetConstant("makearray", (Func<object, object, object>)MakeArray);
-            table.SetConstant("iterate", (Func<object, object[], object>)InteropEnumerate);
+            table.AddOrSet("import", (Func<string,object[], LuaTable>)ImportType);
+            table.AddOrSet("method", (Func<object, string, object>)InteropGetMethod);
+            table.AddOrSet("call", (Func<object, string, object[], object>)InteropCallMethod);
+            table.AddOrSet("setvalue", (Func<object, string, object, object>)InteropSetValue);
+            table.AddOrSet("getvalue", (Func<object, string, object>)InteropGetValue);
+            table.AddOrSet("subscribe", (Action<object, string, Delegate>)InteropSubscribeEvent);
+            table.AddOrSet("unsubscribe", (Action<object, string, Delegate>)InteropUnsubscribeEvent);
+            table.AddOrSet("makearray", (Func<object, object, object>)MakeArray);
+            table.AddOrSet("iterate", (Func<object, object[], object>)InteropEnumerate);
         }
 
         #region Static Types
@@ -48,7 +48,7 @@ namespace IronLua.Library
             return ImportType(type, genNamespaces);
         }
 
-        private LuaTable GetTypeTable(Type type)
+        internal LuaTable GetTypeTable(Type type)
         {
             if (type != null)
             {
