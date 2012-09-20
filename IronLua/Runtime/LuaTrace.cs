@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Dynamic;
 using IronLua.Compiler;
 using Microsoft.Scripting.Utils;
+using System.Runtime.CompilerServices;
 
 namespace IronLua.Runtime
 {
@@ -360,36 +361,66 @@ namespace IronLua.Runtime
     //    #endregion
     //}
 
-    internal struct FunctionStack
+    internal class FunctionStack
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2104:DoNotDeclareReadOnlyMutableReferenceTypes")]
-        public readonly CodeContext Context;
+        public CodeContext Context;
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2104:DoNotDeclareReadOnlyMutableReferenceTypes")]
         public readonly LuaScope UpScope;
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2104:DoNotDeclareReadOnlyMutableReferenceTypes")]
         public readonly LuaScope ExecScope;
 
-        public readonly Stack<CodeContext.VariableAccess> Locals;
+        public readonly Stack<VariableAccess> Locals;
+
+        public readonly string[] LocalVariableNames;
+        public IRuntimeVariables LocalVariables;
+        public readonly string[] UpValueNames;
+        public IRuntimeVariables UpValues;
 
         public readonly string Identifier;
 
-        internal FunctionStack(CodeContext context, LuaScope upScope, LuaScope execScope, string identifier)
+        public FunctionStack(string identifier)
         {
-            Assert.NotNull(context, upScope, execScope);
+            Identifier = identifier;
+
+            Context = null;
+            UpScope = null;
+            ExecScope = null;
+            UpValues = null;
+            UpValueNames = null;
+            LocalVariables = null;
+            LocalVariableNames = null;
+            Locals = null;
+        }
+
+        public FunctionStack(CodeContext context, LuaScope upScope, LuaScope execScope, string identifier)
+        {
+            Assert.NotNull(context);
 
             Context = context;
             UpScope = upScope;
             ExecScope = execScope;
 
-            if (ExecScope.LocalsCount > 0)
-                Locals = new Stack<CodeContext.VariableAccess>();
+            if (UpScope != null)
+                UpValueNames = UpScope.GetLocalNames().ToArray();
+
+            if (ExecScope != null)
+                LocalVariableNames = ExecScope.GetLocalNames().ToArray();
+
+            if (ExecScope != null && ExecScope.LocalsCount > 0)
+                Locals = new Stack<VariableAccess>();
             else
                 Locals = null;
 
             Identifier = identifier;
+
+            LocalVariableNames = null;
+            LocalVariables = null;
+            UpValueNames = null;
+            UpValues = null;
         }
 
-        internal FunctionStack(CodeContext context, LuaScope upScope, LuaScope execScope, IEnumerable<string> identifiers)
+        public FunctionStack(CodeContext context, LuaScope upScope, LuaScope execScope, IEnumerable<string> identifiers)
             : this(context, upScope, execScope, Flatten(identifiers, "."))
         { }
 
@@ -408,5 +439,28 @@ namespace IronLua.Runtime
                 return temp;
             }
         }
+    }
+    
+    internal enum AccessType
+    {
+        GlobalGet, GlobalSet,
+        LocalGet, LocalSet,
+        MemberGet, MemberSet,
+        IndexGet, IndexSet
+    }
+
+    internal class VariableAccess
+    {
+        public VariableAccess(string identifier, AccessType operation)
+        {
+            VariableName = identifier;
+            Operation = operation;
+        }
+
+        public string VariableName
+        { get; private set; }
+
+        public AccessType Operation
+        { get; private set; }
     }
 }

@@ -10,9 +10,9 @@ namespace IronLua.Runtime.Binder
 {
     class LuaConvertBinder : ConvertBinder
     {
-        private readonly LuaContext _context;
+        private readonly CodeContext _context;
 
-        public LuaConvertBinder(LuaContext context, Type type)
+        public LuaConvertBinder(CodeContext context, Type type)
             : base(type, false)
         {
             Contract.Requires(context != null);

@@ -13,9 +13,9 @@ namespace IronLua.Runtime.Binder
 {
     class LuaBinder : DefaultBinder
     {
-        private readonly LuaContext _context;
+        private readonly CodeContext _context;
 
-        public LuaBinder(LuaContext context)
+        public LuaBinder(CodeContext context)
         {
             Contract.Requires(context != null);
             _context = context;

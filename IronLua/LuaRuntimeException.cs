@@ -6,12 +6,38 @@ using System.Collections;
 using System.Collections.Generic;
 using IronLua.Library;
 using System.Linq;
+using System.Dynamic;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace IronLua
 {
     [Serializable]
     public class LuaRuntimeException : LuaException
     {
+        internal static readonly ConstructorInfo Constructor1 = typeof(LuaRuntimeException).GetConstructor(new[] { typeof(CodeContext), typeof(string), typeof(Exception) });
+        internal static readonly ConstructorInfo Constructor2 = typeof(LuaRuntimeException).GetConstructor(new[] { typeof(CodeContext), typeof(string), typeof(object[]) });
+
+        internal static DynamicMetaObject Create(LuaTable table, string message= null, Exception inner = null)
+        {
+            return Create(Expression.Property(Expression.Constant(table, typeof(LuaTable)), "Context"), message, inner);
+        }
+        internal static DynamicMetaObject Create(Expression context, string message = null, Exception inner = null)
+        {
+            var e = Expression.New(Constructor1, context, Expression.Constant(message), Expression.Constant(inner));
+            return new DynamicMetaObject(e, BindingRestrictions.Empty);
+        }
+
+        internal static DynamicMetaObject Create(LuaTable table, string message = null, params object[] args)
+        {
+            return Create(Expression.Property(Expression.Constant(table, typeof(LuaTable)), "Context"), message, args);
+        }
+        internal static DynamicMetaObject Create(Expression context, string format = null, params object[] args)
+        {
+            var e = Expression.New(Constructor2, context, Expression.Constant(format), Expression.Constant(args));
+            return new DynamicMetaObject(e, BindingRestrictions.Empty);
+        }
+
         internal LuaRuntimeException(CodeContext context, string message = null, Exception inner = null)
             : base(message, inner)
         {

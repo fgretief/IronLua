@@ -10,6 +10,8 @@ using Microsoft.Scripting.Utils;
 using System.Linq.Expressions;
 using Microsoft.Scripting;
 using IronLua.Library;
+using IronLua.Runtime.Binder;
+using System.Runtime.CompilerServices;
 
 namespace IronLua.Runtime
 {
@@ -20,6 +22,10 @@ namespace IronLua.Runtime
             Language = language;
             _metatables = SetupMetatables();
             _BaseLibrary = new BaseLibrary(this);
+
+
+            _binder = new LuaBinder(this);
+            _dynamicCache = new DynamicCache(this);
         }
 
         #region CodeContext Properties and Shortcuts
@@ -49,12 +55,6 @@ namespace IronLua.Runtime
         { get; private set; }
 
         /// <summary>
-        /// Gets the default binder used by Lua
-        /// </summary>
-        public DefaultBinder Binder
-        { get { return Language.Binder; } }
-
-        /// <summary>
         /// Gets the scope containing the engine's currently defined global values
         /// </summary>
         public Scope EngineGlobals
@@ -79,6 +79,25 @@ namespace IronLua.Runtime
         {
             get { return Language.EnableTracing; }
         }
+
+        #endregion
+
+        #region Binders
+                
+        private readonly DynamicCache _dynamicCache;
+
+        internal DynamicCache DynamicCache
+        {
+            get { return _dynamicCache; }
+        }
+
+
+        readonly LuaBinder _binder;
+        internal LuaBinder Binder
+        {
+            get { return _binder; }
+        }
+
 
         #endregion
 
@@ -166,56 +185,62 @@ namespace IronLua.Runtime
         }
 
         #endregion
-        
-        #region Object Operations Support
 
-        /// <summary>
-        /// Gets the language specific dynamic callsite cache
-        /// </summary>
-        internal DynamicCache DynamicCache
-        { get { return Language.DynamicCache; } }
+
+        #region Object Operations Support
 
         // These methods is called by the DynamicOperations class that can be
         // retrieved via the inherited Operations property of this class.
 
-        public UnaryOperationBinder CreateUnaryOperationBinder(ExpressionType operation)
+        public  UnaryOperationBinder CreateUnaryOperationBinder(ExpressionType operation)
         {
-            return Language.CreateUnaryOperationBinder(operation);
+            return DynamicCache.GetUnaryOperationBinder(operation);
         }
 
         public BinaryOperationBinder CreateBinaryOperationBinder(ExpressionType operation)
         {
-            return Language.CreateBinaryOperationBinder(operation);
+            return DynamicCache.GetBinaryOperationBinder(operation);
         }
 
         public ConvertBinder CreateConvertBinder(Type toType, bool? explicitCast)
         {
-            return Language.CreateConvertBinder(toType, explicitCast);
+            ContractUtils.Requires(explicitCast == false, "explicitCast");
+            return DynamicCache.GetConvertBinder(toType);
         }
 
         public GetMemberBinder CreateGetMemberBinder(string name, bool ignoreCase)
         {
-            return Language.CreateGetMemberBinder(name, ignoreCase);
+            if (ignoreCase)
+                return Language.CreateGetMemberBinder(name, ignoreCase);
+
+            return DynamicCache.GetGetMemberBinder(name);
         }
 
         public SetMemberBinder CreateSetMemberBinder(string name, bool ignoreCase)
         {
-            return Language.CreateSetMemberBinder(name, ignoreCase);
+            if (ignoreCase)
+                return Language.CreateSetMemberBinder(name, ignoreCase);
+
+            return DynamicCache.GetSetMemberBinder(name);
         }
 
         public DeleteMemberBinder CreateDeleteMemberBinder(string name, bool ignoreCase)
         {
+            if (ignoreCase)
+                return Language.CreateDeleteMemberBinder(name, ignoreCase);
+
+            // TODO: not implemented yet
             return Language.CreateDeleteMemberBinder(name, ignoreCase);
         }
 
         public GetIndexBinder CreateGetIndexBinder(CallInfo callInfo)
         {
-            return Language.CreateGetIndexBinder(callInfo);
+            return DynamicCache.GetGetIndexBinder();//callInfo);
         }
 
         public SetIndexBinder CreateSetIndexBinder(CallInfo callInfo)
         {
-            return Language.CreateSetIndexBinder(callInfo);
+            return DynamicCache.GetSetIndexBinder();//callInfo);
         }
 
         public DeleteIndexBinder CreateDeleteIndexBinder()
@@ -225,20 +250,23 @@ namespace IronLua.Runtime
 
         public InvokeMemberBinder CreateCallBinder(string name, bool ignoreCase, CallInfo callInfo)
         {
-            return Language.CreateCallBinder(name, ignoreCase, callInfo);
+            ContractUtils.Requires(ignoreCase == false, "ignoreCase");
+            return DynamicCache.GetInvokeMemberBinder(name, callInfo);
         }
 
         public InvokeBinder CreateInvokeBinder(CallInfo callInfo)
         {
-            return Language.CreateInvokeBinder(callInfo);
+            return DynamicCache.GetInvokeBinder(callInfo);
         }
 
         public CreateInstanceBinder CreateCreateBinder(CallInfo callInfo)
         {
+            // TODO: not implemented yet
             return Language.CreateCreateBinder(callInfo);
         }
 
         #endregion
+
 
         #region Execution Stack
 
@@ -248,32 +276,6 @@ namespace IronLua.Runtime
         { get { return _FunctionStacks; } }
 
         #region Variable Access Stack
-
-        public enum AccessType
-        {
-            GlobalGet, GlobalSet,
-            LocalGet, LocalSet,
-            MemberGet, MemberSet,
-            IndexGet, IndexSet
-        }
-
-        public class VariableAccess
-        {
-            public VariableAccess(string identifier, AccessType operation)
-            {
-                VariableName = identifier;
-                Operation = operation;
-            }
-
-            public string VariableName
-            { get; private set; }
-
-            public AccessType Operation
-            { get; private set; }
-
-            public object Value
-            { get; internal set; }
-        }
 
         private Stack<VariableAccess> variableAccessStack = new Stack<VariableAccess>();
 
@@ -339,7 +341,8 @@ namespace IronLua.Runtime
 
         private void RemoveTopOperation(Stack<VariableAccess> store = null)
         {
-            var stack = _FunctionStacks.Last().Locals;
+            //var stack = _FunctionStacks.Last().Locals;
+            var stack = variableAccessStack;
             while (stack.Count > 0)
             {
                 var v = stack.Pop();
@@ -359,17 +362,55 @@ namespace IronLua.Runtime
             throw new LuaRuntimeException(this, "No variables have been accessed yet");
         }
 
-        public VariableAccess GetVariableAccess(int stackLevel, int variableIndex)
+        /// <summary>
+        /// Gets an array of locally defined variables, as well as their current values from within a function
+        /// </summary>
+        /// <param name="stackLevel">The stack level of the function who's variables to get</param>
+        public IRuntimeVariables GetLocalVariables(int stackLevel)
         {
-            if (_FunctionStacks.Count < stackLevel)
+            if (_FunctionStacks.Count <= stackLevel)
                 throw new LuaRuntimeException(this, "The given stack level was invalid");
-            var callStackEntry = _FunctionStacks[_FunctionStacks.Count - stackLevel + 1];
+            var callStackEntry = _FunctionStacks[_FunctionStacks.Count - stackLevel];
 
-            if (callStackEntry.Locals.Count < variableIndex)
+            return callStackEntry.LocalVariables;
+        }
+        
+        public string GetLocalVariableName(int stackLevel, int index)
+        {
+            if (_FunctionStacks.Count <= stackLevel)
+                throw new LuaRuntimeException(this, "The given stack level was invalid");
+            var callStackEntry = _FunctionStacks[_FunctionStacks.Count - stackLevel];
+
+            if (callStackEntry.LocalVariableNames.Length <= index)
                 return null;
-            return callStackEntry.Locals.Reverse().ElementAt(variableIndex - 1);
+
+            return callStackEntry.LocalVariableNames[index];
         }
 
+        /// <summary>
+        /// Gets an array of up values, as well as their current values for a function
+        /// </summary>
+        /// <param name="stackLevel">The stack level of the function who's variables to get</param>
+        public IRuntimeVariables GetUpValues(int stackLevel)
+        {
+            if (_FunctionStacks.Count <= stackLevel)
+                throw new LuaRuntimeException(this, "The given stack level was invalid");
+            var callStackEntry = _FunctionStacks[_FunctionStacks.Count - stackLevel];
+
+            return callStackEntry.UpValues;
+        }
+
+        public string GetUpValueName(int stackLevel, int index)
+        {
+            if (_FunctionStacks.Count <= stackLevel)
+                throw new LuaRuntimeException(this, "The given stack level was invalid");
+            var callStackEntry = _FunctionStacks[_FunctionStacks.Count - stackLevel];
+
+            if (callStackEntry.UpValueNames.Length <= index)
+                return null;
+
+            return callStackEntry.UpValueNames[index];
+        }
         #endregion
 
         #endregion

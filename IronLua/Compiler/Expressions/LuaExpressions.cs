@@ -21,7 +21,31 @@ namespace IronLua.Compiler.Expressions
         /// <param name="upScope">The scope in which the function will execute, storing up values (which persist between calls)</param>
         public static Expr FunctionScope(CodeContext context, LuaScope evalScope, LuaScope upScope, IEnumerable<string> identifiers, Expr body)
         {
-            return new FunctionScopeExpression(context, evalScope, upScope, identifiers, body);
+            return new FunctionScopeExpression(context, evalScope, upScope, identifiers, body).Reduce();
+        }
+
+        /// <summary>
+        /// Creates a wrapper around a function which represents entry into its scope
+        /// </summary>
+        /// <param name="context">The context under which this function is compiled</param>
+        /// <param name="body">The block expression which represents this function's execution</param>
+        /// <param name="evalScope">The scope in which the body will be executed, holding local values</param>
+        /// <param name="upScope">The scope in which the function will execute, storing up values (which persist between calls)</param>
+        public static Expr FunctionScope(Expr context, LuaScope evalScope, LuaScope upScope, string identifier, Expr body)
+        {
+            return new FunctionScopeExpression(context, evalScope, upScope, identifier, body).Reduce();
+        }
+        
+        /// <summary>
+        /// Creates a wrapper around a function which represents entry into its scope
+        /// </summary>
+        /// <param name="context">The context under which this function is compiled</param>
+        /// <param name="body">The block expression which represents this function's execution</param>
+        /// <param name="evalScope">The scope in which the body will be executed, holding local values</param>
+        /// <param name="upScope">The scope in which the function will execute, storing up values (which persist between calls)</param>
+        public static Expr FunctionScope(Expr context, string identifier, Expr body)
+        {
+            return new FunctionScopeExpression(context, identifier, body).Reduce();
         }
         
         /// <summary>
@@ -31,7 +55,7 @@ namespace IronLua.Compiler.Expressions
         {
             if (document == null)
                 return body;
-            return new SpansExpression(document, span, body);
+            return new SpansExpression(document, span, body).Reduce();
         }
         
         /// <summary>
@@ -39,7 +63,7 @@ namespace IronLua.Compiler.Expressions
         /// </summary>
         public static Expr ExecutionContext(CodeContext context, Expression scopeVariable, SourceUnit source, Expression body)
         {
-            return new ExecutionContextExpression(context, scopeVariable, source, body);
+            return new ExecutionContextExpression(context, scopeVariable, source, body).Reduce();
         }
 
         /// <summary>
@@ -47,15 +71,15 @@ namespace IronLua.Compiler.Expressions
         /// </summary>
         public static Expr Scope(CodeContext context, LuaScope scope, Expression body)
         {
-            return new ScopeExpression(context, scope, body);
+            return new ScopeExpression(context, scope, body).Reduce();
         }
         
         /// <summary>
         /// Creates a wrapper around a variable access expression which will register it
         /// </summary>
-        public static Expr VariableAccess(CodeContext context, Expression variable, CodeContext.VariableAccess access)
+        public static Expr VariableAccess(CodeContext context, Expression variable, VariableAccess access)
         {
-            return new VariableAccessExpression(context, variable, access);
+            return new VariableAccessExpression(context, variable, access).Reduce();
         }
     }
 }

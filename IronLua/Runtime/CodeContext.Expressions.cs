@@ -44,6 +44,14 @@ namespace IronLua.Runtime
             return Expr.Call(Expr.Constant(context), GetBackingMethod(methodName), args);
         }
 
+        /// <summary>
+        /// Calls a backing method with the given arguments
+        /// </summary>
+        private static Expr CallBackingMethod(string methodName, Expression context, params Expr[] args)
+        {
+            return Expr.Call(context, GetBackingMethod(methodName), args);
+        }
+
         #region Start/Stop Execution
 
         /// <summary>
@@ -84,7 +92,7 @@ namespace IronLua.Runtime
 
         private void _OnStartExecute(IDynamicMetaObjectProvider executingScope, SourceUnit sourceUnit)
         {
-            ContractUtils.Requires(executingScope is IDictionary<string, object>);
+            ContractUtils.Requires(executingScope is Scope);
 
             ExecutingScope = executingScope as Scope;
             ExecutingScopeStorage = ExecutingScope.Storage;
@@ -99,7 +107,7 @@ namespace IronLua.Runtime
 
             _EnvironmentMappings.Clear();   //We clear this here as opposed to in OnFinishExecute in case the last execution failed
 
-            _BaseLibrary.Setup(executingScope as IDictionary<string, object>);
+            _BaseLibrary.Setup(ExecutingScopeStorage as IDictionary<string, object>);
         }
 
         private void _OnFinishExecute()
@@ -119,22 +127,32 @@ namespace IronLua.Runtime
 
         public static Expr GetExecutionEnvironment(CodeContext context, LuaScope scope)
         {
+            return CallBackingMethod("_GetExecutionEnvironment", context, Expr.Constant(scope));
+        }
+
+        private IDynamicMetaObjectProvider _GetExecutionEnvironment(LuaScope scope)
+        {
             LuaScope current = scope;
-            while (current != null && !context.HasCustomEnvironment(current))
+            while (current != null && !HasCustomEnvironment(current))
                 current = current.GetParent();
 
             if (current != null)
-                return Expr.Constant(context.GetFunctionEnvironment(scope));
+                return GetFunctionEnvironment(scope);
 
-            return Expr.Constant(context.ExecutingScopeStorage);
+            return ExecutingScopeStorage;
         }
 
         #endregion
 
         #region Execution Stack
 
-        public static Expr FunctionStackVariable
+        public static ParameterExpression FunctionStackVariable
         { get; private set; }
+        
+        public static Expr PushFunctionStack(Expression context, Expression function)
+        {
+            return CallBackingMethod("_PushFunctionStack", context, function);
+        }
 
         public static Expr PushFunctionStack(CodeContext context, FunctionStack function)
         {
@@ -142,6 +160,11 @@ namespace IronLua.Runtime
         }
 
         public static Expr PopFunctionStack(CodeContext context)
+        {
+            return CallBackingMethod("_PopFunctionStack", context);
+        }
+
+        public static Expr PopFunctionStack(Expression context)
         {
             return CallBackingMethod("_PopFunctionStack", context);
         }
@@ -161,13 +184,11 @@ namespace IronLua.Runtime
         
         private void _UpdateLastVariableAccess(VariableAccess variable, object value)
         {
-            variable.Value = value;
-
             switch (variable.Operation)
             {
                 case AccessType.LocalGet:
                 case AccessType.LocalSet:
-                    _FunctionStacks.Last().Locals.Push(variable);
+                    //_FunctionStacks.Last().Locals.Push(variable);
                     break;
                 case AccessType.GlobalGet:
                 case AccessType.GlobalSet:
@@ -182,32 +203,42 @@ namespace IronLua.Runtime
             return CallBackingMethod("_UpdateLastVariableAccess", context, Expr.Constant(variable), value);
         }
 
+        public static Expr OnExceptionThrown(CodeContext context, Expr exception)
+        {
+            return CallBackingMethod("_OnExceptionThrown", context, exception);
+        }
+
+        private void _OnExceptionThrown(Exception ex)
+        {
+            throw ex;
+        }
+
         private void _OnScopeEnter(LuaScope scope)
         {
-            accessStackExpectedSize.Push(variableAccessStack.Count);
+            //accessStackExpectedSize.Push(variableAccessStack.Count);
         }
 
         private void _OnScopeLeave()
         {
-            var expectedSize = accessStackExpectedSize.Pop();
+            //var expectedSize = accessStackExpectedSize.Pop();
 
-            Stack<VariableAccess> backup = new Stack<VariableAccess>();
-            while (variableAccessStack.Count > expectedSize + accessStackSizeOffset)
-            {
-                switch (GetRootOperation())
-                {
-                    case AccessType.GlobalGet:
-                    case AccessType.GlobalSet:
-                        RemoveTopOperation(backup);
-                        break;
-                    default:
-                        RemoveTopOperation();
-                        break;
-                }
-            }
+            //Stack<VariableAccess> backup = new Stack<VariableAccess>();
+            //while (variableAccessStack.Count > expectedSize + accessStackSizeOffset)
+            //{
+            //    switch (GetRootOperation())
+            //    {
+            //        case AccessType.GlobalGet:
+            //        case AccessType.GlobalSet:
+            //            RemoveTopOperation(backup);
+            //            break;
+            //        default:
+            //            RemoveTopOperation();
+            //            break;
+            //    }
+            //}
 
-            while (backup.Count > 0)
-                _FunctionStacks.Last().Locals.Push(backup.Pop());
+            //while (_FunctionStacks.Any() && backup.Count > 0)
+            //    _FunctionStacks.Last().Locals.Push(backup.Pop());
         }
 
         public static Expr OnScopeEnter(CodeContext context, LuaScope scope)

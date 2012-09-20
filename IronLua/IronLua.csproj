@@ -55,6 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Compiler\Expressions\ClosureExpression.cs" />
     <Compile Include="Compiler\Expressions\ExecutionContextExpression.cs" />
     <Compile Include="Compiler\Expressions\FunctionScopeExpression.cs" />
     <Compile Include="Compiler\Expressions\LuaExpressions.cs" />
@@ -67,6 +68,7 @@
     <Compile Include="Compiler\Parsing\Symbol.cs" />
     <Compile Include="Compiler\Parsing\Token.cs" />
     <Compile Include="Compiler\Parsing\Tokenizer.cs" />
+    <Compile Include="Compiler\ScopeLocalsStorage.cs" />
     <Compile Include="Hosting\Lua.cs" />
     <Compile Include="Hosting\LuaCommandLine.cs" />
     <Compile Include="Hosting\LuaConsoleHost.cs" />

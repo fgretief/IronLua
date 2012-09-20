@@ -24,7 +24,6 @@ namespace IronLua.Runtime
 {
     public sealed class LuaContext : LanguageContext
     {
-        private readonly DynamicCache _dynamicCache;
         
         public LuaContext(ScriptDomainManager manager, IDictionary<string, object> options = null)
             : base(manager)
@@ -32,19 +31,16 @@ namespace IronLua.Runtime
             // TODO: options
             if (options.ContainsKey("tracing"))
                 EnableTracing = options["tracing"] is bool && (bool)options["tracing"];
-            
-            _binder = new LuaBinder(this);
-            _dynamicCache = new DynamicCache(this);
+
+            InvariantCodeContext = new CodeContext(this);
+
             SetupLibraries();
         }
 
-        internal DynamicCache DynamicCache
-        {
-            get { return _dynamicCache; }
-        }
-
-
+        
         #region Scope Operations Support
+
+        private readonly CodeContext InvariantCodeContext;
 
         public override bool ScopeTryGetVariable(Scope scope, string name, out dynamic value)
         {
@@ -93,7 +89,7 @@ namespace IronLua.Runtime
         /// <inheritdoc/>
         public override Scope CreateScope()
         {
-            var table = new LuaTable();            
+            var table = new LuaTable(InvariantCodeContext);            
             var scope = new Scope(table as IDynamicMetaObjectProvider);
 
             return scope;
@@ -199,86 +195,7 @@ namespace IronLua.Runtime
         }
 
         #endregion
-
-        #region Object Operations Support
-
-        // These methods is called by the DynamicOperations class that can be
-        // retrieved via the inherited Operations property of this class.
-
-        public override UnaryOperationBinder CreateUnaryOperationBinder(ExpressionType operation)
-        {
-            return DynamicCache.GetUnaryOperationBinder(operation);
-        }
-
-        public override BinaryOperationBinder CreateBinaryOperationBinder(ExpressionType operation)
-        {
-            return DynamicCache.GetBinaryOperationBinder(operation);
-        }
-
-        public override ConvertBinder CreateConvertBinder(Type toType, bool? explicitCast)
-        {
-            ContractUtils.Requires(explicitCast == false, "explicitCast");
-            return DynamicCache.GetConvertBinder(toType);
-        }
-
-        public override GetMemberBinder CreateGetMemberBinder(string name, bool ignoreCase)
-        {
-            if (ignoreCase)
-                return base.CreateGetMemberBinder(name, ignoreCase);
-
-            return DynamicCache.GetGetMemberBinder(name);
-        }
-
-        public override SetMemberBinder CreateSetMemberBinder(string name, bool ignoreCase)
-        {
-            if (ignoreCase)
-                return base.CreateSetMemberBinder(name, ignoreCase);
-
-            return DynamicCache.GetSetMemberBinder(name);
-        }
-
-        public override DeleteMemberBinder CreateDeleteMemberBinder(string name, bool ignoreCase)
-        {
-            if (ignoreCase)
-                return base.CreateDeleteMemberBinder(name, ignoreCase);
-
-            // TODO: not implemented yet
-            return base.CreateDeleteMemberBinder(name, ignoreCase);
-        }
-
-        public GetIndexBinder CreateGetIndexBinder(CallInfo callInfo)
-        {
-            return DynamicCache.GetGetIndexBinder();//callInfo);
-        }
-
-        public SetIndexBinder CreateSetIndexBinder(CallInfo callInfo)
-        {
-            return DynamicCache.GetSetIndexBinder();//callInfo);
-        }
-
-        public DeleteIndexBinder CreateDeleteIndexBinder()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override InvokeMemberBinder CreateCallBinder(string name, bool ignoreCase, CallInfo callInfo)
-        {
-            ContractUtils.Requires(ignoreCase == false, "ignoreCase");
-            return DynamicCache.GetInvokeMemberBinder(name, callInfo);
-        }
-
-        public override InvokeBinder CreateInvokeBinder(CallInfo callInfo)
-        {
-            return DynamicCache.GetInvokeBinder(callInfo);
-        }
-
-        public override CreateInstanceBinder CreateCreateBinder(CallInfo callInfo)
-        {
-            // TODO: not implemented yet
-            return base.CreateCreateBinder(callInfo);
-        }
-
-        #endregion
+        
         public override ScriptCode CompileSourceCode(SourceUnit sourceUnit, CompilerOptions options, ErrorSink errorSink)
         {
             ContractUtils.RequiresNotNull(sourceUnit, "sourceUnit");
@@ -316,7 +233,7 @@ namespace IronLua.Runtime
                 var gen = new Generator(codeContext);
                 var exprLambda = gen.Compile(ast, sourceUnit);
                 //sourceUnit.CodeProperties = ScriptCodeParseResult.Complete;
-                return new LuaScriptCode(this, sourceUnit, exprLambda);
+                return new LuaScriptCode(codeContext, sourceUnit, exprLambda);
             }
         }
 
@@ -382,12 +299,6 @@ namespace IronLua.Runtime
         }
 
         #endregion
-
-        readonly LuaBinder _binder;
-        internal LuaBinder Binder
-        {
-            get { return _binder; }
-        }
 
         /// <summary>
         /// Attempts to retrieve a string representation of the given object

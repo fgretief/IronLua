@@ -10,13 +10,13 @@ namespace IronLua.Compiler.Expressions
     class VariableAccessExpression : Expression
     {
         private readonly CodeContext _context;
-        private readonly CodeContext.VariableAccess _access;
+        private readonly VariableAccess _access;
         private readonly Expression _variable;   //The expression representing the variable access
 
         /// <summary>
         /// Creates a wrapper around a variable access expression which will register it
         /// </summary>
-        public VariableAccessExpression(CodeContext context, Expression variable, CodeContext.VariableAccess access)
+        public VariableAccessExpression(CodeContext context, Expression variable, VariableAccess access)
         {
             _context = context;
             _variable = variable;
@@ -49,14 +49,14 @@ namespace IronLua.Compiler.Expressions
 
         public override Expression Reduce()
         {
-            var temp = Expression.Variable(_variable.Type, "$variable_access$");
+            var temp = Expression.Parameter(typeof(object));
 
             return Expression.Block(
-                    temp.Type,
-                    new[] { temp },
-                    Expression.Assign(temp, _variable),
-                    CodeContext.UpdateLastVariableAccess(_context, _access, temp),
-                    temp);
+                        _variable.Type,
+                        new[] { temp },
+                        Expression.Assign(temp, _variable),
+                        CodeContext.UpdateLastVariableAccess(_context, _access, temp),
+                        temp);
         }
 
         public override Type Type

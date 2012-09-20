@@ -52,6 +52,11 @@ namespace IronLua.Compiler
             return array;
         }
 
+        public IEnumerable<string> GetLocalNames()
+        {
+            return variables.Keys;
+        }
+
         public IEnumerable<ParamExpr> GetLocals()
         {
             return variables.Values;

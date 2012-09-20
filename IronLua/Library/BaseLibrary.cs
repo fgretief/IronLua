@@ -512,6 +512,9 @@ namespace IronLua.Library
 
         public void Clean(IDictionary<string,object> table)
         {
+            if (table == null)
+                return;
+
             table.RemoveIfEqual("assert", (Func<object, object, object[], Varargs>)Assert);
             table.RemoveIfEqual("collectgarbage", (Action<string, string>)CollectGarbage);
             table.RemoveIfEqual("dofile", (Func<string, object>)DoFile);

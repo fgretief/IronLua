@@ -8,9 +8,9 @@ namespace IronLua.Runtime.Binder
 {
     class LuaUnaryOperationBinder : UnaryOperationBinder
     {
-        readonly LuaContext context;
+        readonly CodeContext context;
 
-        public LuaUnaryOperationBinder(LuaContext context, ExprType operation)
+        public LuaUnaryOperationBinder(CodeContext context, ExprType operation)
             : base(operation)
         {
             ContractUtils.RequiresNotNull(context, "context");
@@ -48,7 +48,7 @@ namespace IronLua.Runtime.Binder
 
             if (expr == null)
                 return MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.UnaryMinus(context, target), context,
-                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.UNARYMINUS_METAMETHOD));
+                    new FunctionStack(context, null, null, Constant.UNARYMINUS_METAMETHOD));
 
             if (target.LimitType == typeof(string))
                 return FallbackIfNumberIsNan(expr);
@@ -74,11 +74,11 @@ namespace IronLua.Runtime.Binder
                 Expr.Invoke(Expr.Constant((Func<double, bool>)Double.IsNaN), numVar),
                 MetamethodFallbacks.WrapStackTrace(
                 Expr.Invoke(
-                    Expr.Constant((Func<LuaContext, object, object>)LuaOps.UnaryMinusMetamethod),
+                    Expr.Constant((Func<CodeContext, object, object>)LuaOps.UnaryMinusMetamethod),
                     Expr.Constant(context),
                     Expr.Constant(Operation),
                     Expr.Convert(numExpr, typeof(object))), context,
-                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.UNARYMINUS_METAMETHOD)),
+                    new FunctionStack(context, null, null, context.CurrentVariableIdentifier + "." + Constant.UNARYMINUS_METAMETHOD)),
                 numVar);
 
             return Expr.Block(

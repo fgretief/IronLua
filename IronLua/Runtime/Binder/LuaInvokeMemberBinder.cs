@@ -8,9 +8,9 @@ namespace IronLua.Runtime.Binder
 {
     class LuaInvokeMemberBinder : InvokeMemberBinder
     {
-        readonly LuaContext context;
+        readonly CodeContext context;
 
-        public LuaInvokeMemberBinder(LuaContext context, string name, CallInfo callInfo)
+        public LuaInvokeMemberBinder(CodeContext context, string name, CallInfo callInfo)
             : base(name, false, callInfo)
         {
             ContractUtils.RequiresNotNull(context, "context");
@@ -36,7 +36,7 @@ namespace IronLua.Runtime.Binder
                     combinedArgs);
 
             expression = MetamethodFallbacks.WrapStackTrace(expression, context,
-                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, context.Trace.CurrentVariableIdentifier + "." + Name));
+                    new FunctionStack(context,null, null, context.CurrentVariableIdentifier + "." + Name));
 
             return new DynamicMetaObject(expression, restrictions);
         }
