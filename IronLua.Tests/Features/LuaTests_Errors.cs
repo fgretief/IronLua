@@ -29,7 +29,7 @@ namespace IronLua.Tests.Features
             Assert.That(error, Is.Empty);
         }
 
-        [Test, ExpectedException(ExpectedException = typeof(LuaErrorException), ExpectedMessage = "(chunk):1:error message")]
+        [Test, ExpectedException(ExpectedException = typeof(LuaErrorException), ExpectedMessage = "error message")]
         public void TestErrors_Throw()
         {
             engine.Execute("error('error message')");
