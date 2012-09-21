@@ -55,12 +55,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Compiler\Expressions\ExecutionContextExpression.cs" />
+    <Compile Include="Compiler\Expressions\FunctionDefinitionExpression.cs" />
+    <Compile Include="Compiler\Expressions\FunctionScopeExpression.cs" />
+    <Compile Include="Compiler\Expressions\LuaExpressions.cs" />
+    <Compile Include="Compiler\Expressions\ScopeExpression.cs" />
+    <Compile Include="Compiler\Expressions\SpansExpression.cs" />
+    <Compile Include="Compiler\Expressions\VariableAccessExpression.cs" />
     <Compile Include="Compiler\ExprHelpers.cs" />
     <Compile Include="Compiler\LuaCompilerOptions.cs" />
     <Compile Include="Compiler\Parsing\Parser.cs" />
     <Compile Include="Compiler\Parsing\Symbol.cs" />
     <Compile Include="Compiler\Parsing\Token.cs" />
     <Compile Include="Compiler\Parsing\Tokenizer.cs" />
+    <Compile Include="Compiler\ScopeLocalsStorage.cs" />
     <Compile Include="Hosting\Lua.cs" />
     <Compile Include="Hosting\LuaCommandLine.cs" />
     <Compile Include="Hosting\LuaConsoleHost.cs" />
@@ -72,6 +80,8 @@
     <Compile Include="Library\OSLibrary.cs" />
     <Compile Include="Library\PackageLibrary.cs" />
     <Compile Include="Runtime\Binder\LuaBinder.cs" />
+    <Compile Include="Runtime\CodeContext.cs" />
+    <Compile Include="Runtime\CodeContext.Expressions.cs" />
     <Compile Include="Runtime\LuaOptions.cs" />
     <Compile Include="Runtime\LuaContext.cs" />
     <Compile Include="Hosting\LuaOptionsParser.cs" />
@@ -125,6 +135,7 @@
     <Compile Include="Runtime\RuntimeHelpers.cs" />
     <Compile Include="Runtime\Varargs.cs" />
     <Compile Include="Util\CharExtensions.cs" />
+    <Compile Include="Util\DictionaryExtensions.cs" />
     <Compile Include="Util\EnumerableExtensions.cs" />
     <Compile Include="Util\HashHelpers.cs" />
     <Compile Include="Util\ParameterInfoExtensions.cs" />
@@ -141,6 +152,7 @@
       <DependentUpon>CurrentVersion.cs</DependentUpon>
     </None>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

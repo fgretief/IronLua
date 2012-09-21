@@ -5,6 +5,8 @@ using System.Linq.Expressions;
 using System.Threading;
 using Expr = System.Linq.Expressions.Expression;
 using ParamExpr = System.Linq.Expressions.ParameterExpression;
+using IronLua.Runtime;
+using System.Dynamic;
 
 namespace IronLua.Compiler
 {
@@ -13,18 +15,29 @@ namespace IronLua.Compiler
         const string BreakLabelName = "@break";
         const string ReturnLabelName = "@return";
 
+
+
+        static readonly ParamExpr _DlrGlobals = Expr.Parameter(typeof(IDynamicMetaObjectProvider), "_ENV");
         readonly LuaScope parent;
+        readonly CodeContext context;
         readonly Dictionary<string, ParamExpr> variables;
         readonly Dictionary<string, LabelTarget> labels;
-
-        ParamExpr dlrGlobals; // only set if parent == null
-
+        
         static int hiddenId;
 
         public bool IsRoot { get { return parent == null; } }
 
-        private LuaScope(LuaScope parent = null)
+        private LuaScope(CodeContext context)
         {
+            this.context = context;
+            this.parent = null;
+            this.variables = new Dictionary<string, ParamExpr>();
+            this.labels = new Dictionary<string, LabelTarget>();
+        }
+        
+        private LuaScope(LuaScope parent)
+        {
+            this.context = parent.context;
             this.parent = parent;
             this.variables = new Dictionary<string, ParamExpr>();
             this.labels = new Dictionary<string, LabelTarget>();
@@ -41,6 +54,11 @@ namespace IronLua.Compiler
             var array = new ParamExpr[values.Count];
             values.CopyTo(array, 0);
             return array;
+        }
+
+        public IEnumerable<string> GetLocalNames()
+        {
+            return variables.Keys;
         }
 
         public IEnumerable<ParamExpr> GetLocals()
@@ -107,19 +125,15 @@ namespace IronLua.Compiler
             return AddLabel(BreakLabelName); 
         }
 
-        public ParamExpr GetDlrGlobals()
+        public Expr GetDlrGlobals()
         {
-            if (dlrGlobals != null || parent == null)
-                return dlrGlobals;
-
-            return parent.GetDlrGlobals();
+            return CodeContext.GetExecutionEnvironment(context, this);
         }
 
-        public static LuaScope CreateRoot(ParamExpr dlrGlobals)
+        public static LuaScope CreateRoot(CodeContext context)
         {
-            Contract.Requires(dlrGlobals != null);
-            var scope = new LuaScope();
-            scope.dlrGlobals = dlrGlobals;
+            Contract.Requires(context != null);
+            var scope = new LuaScope(context);
             scope.labels.Add(ReturnLabelName, Expr.Label(typeof(object)));
             return scope;
         }

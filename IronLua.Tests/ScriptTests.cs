@@ -9,7 +9,7 @@ namespace IronLua.Tests
     public class ScriptTests
     {
         [Test]
-        [ExpectedException(typeof(LuaRuntimeException), ExpectedMessage = "(chunk):1:Assertion failed")]
+        [ExpectedException(typeof(LuaRuntimeException), ExpectedMessage = "Assertion failed")]
         public void ExecuteAssertFalse()
         {
             Lua.CreateEngine().Execute("assert(false)");

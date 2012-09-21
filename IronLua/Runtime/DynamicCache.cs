@@ -10,14 +10,14 @@ namespace IronLua.Runtime
     // TODO: Make thread-safe
     class DynamicCache
     {
-        readonly LuaContext context;
-        readonly Dictionary<ExpressionType, LuaBinaryOperationBinder> binaryOperationBinders;
-        readonly Dictionary<ExpressionType, LuaUnaryOperationBinder> unaryOperationBinders;
-        readonly Dictionary<InvokeMemberBinderKey, LuaInvokeMemberBinder> invokeMemberBinders;
-        readonly Dictionary<CallInfo, LuaInvokeBinder> invokeBinders;
-        readonly Dictionary<Type, LuaConvertBinder> convertBinders;
-        readonly Dictionary<string, LuaSetMemberBinder> setMemberBinders;
-        readonly Dictionary<string, LuaGetMemberBinder> getMemberBinders;
+        readonly CodeContext context;
+        static readonly Dictionary<ExpressionType, LuaBinaryOperationBinder> binaryOperationBinders;
+        static readonly Dictionary<ExpressionType, LuaUnaryOperationBinder> unaryOperationBinders;
+        static readonly Dictionary<InvokeMemberBinderKey, LuaInvokeMemberBinder> invokeMemberBinders;
+        static readonly Dictionary<CallInfo, LuaInvokeBinder> invokeBinders;
+        static readonly Dictionary<Type, LuaConvertBinder> convertBinders;
+        static readonly Dictionary<string, LuaSetMemberBinder> setMemberBinders;
+        static readonly Dictionary<string, LuaGetMemberBinder> getMemberBinders;
         LuaSetIndexBinder setIndexBinder;
         LuaGetIndexBinder getIndexBinder;
 
@@ -28,10 +28,8 @@ namespace IronLua.Runtime
         Func<object, object, object, object> getDynamicCallCache2;
         Func<object, object, object, object, object> getDynamicCallCache3;
 
-        public DynamicCache(LuaContext context)
+        static DynamicCache()
         {
-            ContractUtils.RequiresNotNull(context, "context");
-            this.context = context;
             binaryOperationBinders = new Dictionary<ExpressionType, LuaBinaryOperationBinder>();
             unaryOperationBinders = new Dictionary<ExpressionType, LuaUnaryOperationBinder>();
             invokeMemberBinders = new Dictionary<InvokeMemberBinderKey, LuaInvokeMemberBinder>();
@@ -39,6 +37,12 @@ namespace IronLua.Runtime
             convertBinders = new Dictionary<Type, LuaConvertBinder>();
             setMemberBinders = new Dictionary<string, LuaSetMemberBinder>();
             getMemberBinders = new Dictionary<string, LuaGetMemberBinder>();
+        }
+
+        public DynamicCache(CodeContext context)
+        {
+            ContractUtils.RequiresNotNull(context, "context");
+            this.context = context;
         }
 
         public BinaryOperationBinder GetBinaryOperationBinder(ExpressionType operation)
@@ -79,7 +83,7 @@ namespace IronLua.Runtime
 
         public GetMemberBinder GetGetMemberBinder(string name)
         {
-            return GetCachedBinder(getMemberBinders, name, k => new LuaGetMemberBinder(context, k));
+            return GetCachedBinder(getMemberBinders, name, k => new LuaGetMemberBinder(k));
         }
 
         public GetIndexBinder GetGetIndexBinder()

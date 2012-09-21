@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace IronLua.Util
+namespace IronLua
 {
     static class EnumerableExtensions
     {
@@ -10,6 +10,27 @@ namespace IronLua.Util
             foreach (var element in collection)
                 yield return element;
             yield return item;
+        }
+
+        public static T Merge<T>(this IEnumerable<T> collection, Func<T,T,T> merger)
+        {
+            T temp = default(T);
+            bool first = true;
+            using (var e = collection.GetEnumerator())
+            {
+                while (e.MoveNext())
+                {
+                    if (first)
+                    {
+                        temp = e.Current;
+                        first = false;
+                    }
+                    else                    
+                        temp = merger(temp, e.Current);                    
+                }
+            }
+
+            return temp;
         }
 
         public static IEnumerable<T> Resize<T>(this IEnumerable<T> collection, int size, T item)

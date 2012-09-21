@@ -10,21 +10,21 @@ namespace IronLua.Runtime.Binder
 {
     class LuaGetIndexBinder : GetIndexBinder
     {
-        private readonly LuaContext _context;
+        private readonly CodeContext _context;
 
-        public LuaGetIndexBinder(LuaContext context, CallInfo callInfo)
+        public LuaGetIndexBinder(CodeContext context, CallInfo callInfo)
             : base(callInfo)
         {
             Contract.Requires(context != null);
             _context = context;
         }
 
-        public LuaGetIndexBinder(LuaContext context)
+        public LuaGetIndexBinder(CodeContext context)
             : this(context, new CallInfo(1))
         {            
         }
 
-        public LuaContext Context
+        public CodeContext Context
         {
             get { return _context; }
         }
@@ -50,7 +50,7 @@ namespace IronLua.Runtime.Binder
             }
 
             var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.Index(_context, target, indexes), Context,
-                    new LuaTrace.FunctionCall(Context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, Constant.INDEX_METAMETHOD));
+                    new FunctionStack(Context, null, null, Constant.INDEX_METAMETHOD));
 
             return WrapToObject(new DynamicMetaObject(expression, BindingRestrictions.Empty));
             

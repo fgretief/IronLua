@@ -15,7 +15,7 @@ namespace IronLua.Library
 {
     class BaseLibrary : Library
     {
-        public BaseLibrary(LuaContext context) 
+        public BaseLibrary(CodeContext context) 
             : base(context)
         {
         }
@@ -32,13 +32,13 @@ namespace IronLua.Library
             }
 
             if (message == null)
-                throw new LuaRuntimeException(Context, "Assertion failed");
-            throw new LuaRuntimeException(Context, message.ToString());
+                throw LuaRuntimeException.Create(Context, "Assertion failed");
+            throw LuaRuntimeException.Create(Context, message.ToString());
         }
 
         public void CollectGarbage(string opt, string arg = null)
         {
-            throw new LuaRuntimeException(Context, ExceptionMessage.FUNCTION_NOT_IMPLEMENTED);
+            throw LuaRuntimeException.Create(Context, ExceptionMessage.FUNCTION_NOT_IMPLEMENTED);
         }
 
         public object DoFile(string filename = null)
@@ -50,11 +50,11 @@ namespace IronLua.Library
             }
             catch (SyntaxErrorException ex)
             {
-                throw new LuaRuntimeException(Context, ex.Message, ex);
+                throw LuaRuntimeException.Create(Context, ex.Message, ex);
             }
             catch (LuaSyntaxException e)
             {
-                throw new LuaRuntimeException(Context, e.Message, e);
+                throw LuaRuntimeException.Create(Context, e.Message, e);
             }
         }
 
@@ -65,7 +65,17 @@ namespace IronLua.Library
 
         public object GetFEnv(object f = null)
         {
-            throw new LuaRuntimeException(Context, ExceptionMessage.FUNCTION_NOT_IMPLEMENTED);
+            if (f is double)
+            {
+                //stack level
+                var function = Context.GetFunction(Convert.ToInt32(f) - 1);
+                return Context.GetFunctionEnvironment(function.ExecScope);
+            }
+            else if (f is Delegate)
+                return Context.GetFunctionEnvironment(f as Delegate);
+            else
+                return null;
+
         }
 
         public object GetMetatable(object obj)
@@ -168,7 +178,7 @@ namespace IronLua.Library
         public Varargs Next(LuaTable table, object index = null)
         {
             if (table == null)
-                throw new LuaRuntimeException(Context, ExceptionMessage.INVOKE_BAD_ARGUMENT_GOT, "next", "table", "nil");
+                throw LuaRuntimeException.Create(Context, ExceptionMessage.INVOKE_BAD_ARGUMENT_GOT, "next", "table", "nil");
 
             return table.Next(index);
         }
@@ -197,8 +207,7 @@ namespace IronLua.Library
 
         public void Print(params object[] args)
         {
-            var domain = Context.DomainManager;
-            var writer = domain.SharedIO.OutputWriter;
+            var writer = Context.EngineIO.OutputWriter;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -234,7 +243,7 @@ namespace IronLua.Library
 
             var numIndex = (int)Math.Round(num) - 1;
             if (numIndex >= args.Length || numIndex < 0)
-                throw new LuaRuntimeException(Context, ExceptionMessage.INVOKE_BAD_ARGUMENT, 1, "index out of range");
+                throw LuaRuntimeException.Create(Context, ExceptionMessage.INVOKE_BAD_ARGUMENT, 1, "index out of range");
 
             var returnArgs = new object[args.Length - numIndex];
             Array.Copy(args, numIndex, returnArgs, 0, args.Length - numIndex);
@@ -243,13 +252,24 @@ namespace IronLua.Library
 
         public object SetFEnv(object f, LuaTable table)
         {
-            throw new LuaRuntimeException(Context, ExceptionMessage.FUNCTION_NOT_IMPLEMENTED);
+            if (f is double)
+            {
+                //stack level
+                var function = Context.GetFunction(Convert.ToInt32(f) - 1);
+                Context.SetFunctionEnvironment(function.ExecScope, table);
+            }
+            else if (f is Delegate)            
+                Context.SetFunctionEnvironment(f as Delegate, table);
+            else
+                throw LuaRuntimeException.Create(Context, ExceptionMessage.FUNCTION_NOT_IMPLEMENTED);
+
+            return table;
         }
 
         public LuaTable SetMetatable(LuaTable table, LuaTable metatable)
         {
             if (table.Metatable != null && table.Metatable.GetValue(Constant.METATABLE_METAFIELD) != null)
-                throw new LuaRuntimeException(Context, ExceptionMessage.PROTECTED_METATABLE);
+                throw LuaRuntimeException.Create(Context, ExceptionMessage.PROTECTED_METATABLE);
 
             table.Metatable = metatable;
             return table;
@@ -260,7 +280,7 @@ namespace IronLua.Library
             return ToNumber(Context, obj, @base);
         }
 
-        public static object ToNumber(LuaContext context, object obj, object @base = null)
+        public static object ToNumber(CodeContext context, object obj, object @base = null)
         {
             var numBase = ConvertToNumber(context, @base, 2, 10.0);
 
@@ -271,7 +291,7 @@ namespace IronLua.Library
             }
             else if (numBase < 2.0 || numBase > 36.0)
             {
-                throw new LuaRuntimeException(context, ExceptionMessage.INVOKE_BAD_ARGUMENT, 2, "base out of range");
+                throw LuaRuntimeException.Create(context, ExceptionMessage.INVOKE_BAD_ARGUMENT, 2, "base out of range");
             }
 
             string stringStr;
@@ -426,7 +446,7 @@ namespace IronLua.Library
             return ConvertToNumber(Context, obj, argumentIndex, @default);
         }
 
-        static double ConvertToNumber(LuaContext context, object obj, int argumentIndex, double @default = Double.NaN)
+        static double ConvertToNumber(CodeContext context, object obj, int argumentIndex, double @default = Double.NaN)
         {
             string tempString;
 
@@ -442,7 +462,7 @@ namespace IronLua.Library
                     return num;
             }
 
-            throw new LuaRuntimeException(context, ExceptionMessage.INVOKE_BAD_ARGUMENT_GOT,
+            throw LuaRuntimeException.Create(context, ExceptionMessage.INVOKE_BAD_ARGUMENT_GOT,
                                           argumentIndex, "number", Type(obj));
         }
 
@@ -458,11 +478,11 @@ namespace IronLua.Library
             return -1;
         }
 
-        static Func<dynamic> CompileString(LuaContext context, string source)
+        static Func<dynamic> CompileString(CodeContext context, string source)
         {
             ContractUtils.RequiresNotNull(context, "context");
 
-            var sourceUnit = context.CreateSnippet(source, SourceCodeKind.Statements);
+            var sourceUnit = context.Language.CreateSnippet(source, SourceCodeKind.Statements);
 
             //var options = (LuaCompilerOptions)context.GetCompilerOptions();
             //var errorSink = context.GetCompilerErrorSink();
@@ -474,40 +494,76 @@ namespace IronLua.Library
             var parser = new Parser(lexer, lexer.ErrorSink);
             var ast = parser.Parse();
             var gen = new Generator(context);
-            var expr = gen.CompileInline(ast, context.Trace.CurrentEvaluationScope.GetRoot(), context.Trace.CurrentScopeStorage, sourceUnit);
+            var expr = gen.CompileInline(ast, context.FunctionStacks.Last().ExecScope, context.ExecutingScopeStorage, sourceUnit);
             return expr.Compile();
         }
 
-        public override void Setup(LuaTable table)
+        public override void Setup(IDictionary<string,object> table)
         {
-            table.SetValue("assert", (Func<object, object, object[], Varargs>)Assert);
-            table.SetValue("collectgarbage", (Action<string, string>)CollectGarbage);
-            table.SetValue("dofile", (Func<string, object>)DoFile);
-            table.SetValue("error", (Action<object, object>)Error);
-            table.SetValue("_ENV", table);
-            table.SetValue("_G", table);
-            table.SetValue("getfenv", (Func<object, object>)GetFEnv);
-            table.SetValue("getmetatable", (Func<object, object>)GetMetatable);
-            table.SetValue("ipairs", (Func<LuaTable, Varargs>)IPairs);
-            table.SetValue("load", (Func<Delegate, string, Varargs>)Load);
-            table.SetValue("loadfile", (Func<string, Varargs>)LoadFile);
-            table.SetValue("loadstring", (Func<string, string, Varargs>)LoadString);
-            table.SetValue("next", (Func<LuaTable, object, Varargs>)Next);
-            table.SetValue("pairs", (Func<LuaTable, Varargs>)Pairs);
-            table.SetValue("pcall", (Func<Delegate, object[], Varargs>)PCall);
-            table.SetValue("print", (Action<object[]>)Print);
-            table.SetValue("rawequal", (Func<object, object, bool>)RawEqual);
-            table.SetValue("rawget", (Func<LuaTable, object, object>)RawGet);
-            table.SetValue("rawset", (Func<LuaTable, object, object, object>)RawSet);
-            table.SetValue("select", (Func<object, object[], Varargs>)Select);
-            table.SetValue("setfenv", (Func<object, LuaTable, object>)SetFEnv);
-            table.SetValue("setmetatable", (Func<LuaTable, LuaTable, LuaTable>)SetMetatable);
-            table.SetValue("tonumber", (Func<object, object, object>)ToNumber);
-            table.SetValue("tostring", (Func<object, object>)ToStringEx);
-            table.SetValue("type", (Func<object, string>)Type);
-            table.SetValue("unpack", (Func<LuaTable, object, object, Varargs>)Unpack);
-            table.SetValue("_VERSION", Constant.LUA_VERSION);
-            table.SetValue("xpcall", (Func<Delegate, Delegate, Varargs>)XPCall);
+            table.AddNotPresent("assert", (Func<object, object, object[], Varargs>)Assert);
+            table.AddNotPresent("collectgarbage", (Action<string, string>)CollectGarbage);
+            table.AddNotPresent("dofile", (Func<string, object>)DoFile);
+            table.AddNotPresent("error", (Action<object, object>)Error);
+            table.AddNotPresent("_ENV", table);
+            table.AddNotPresent("_G", table);
+            table.AddNotPresent("getfenv", (Func<object, object>)GetFEnv);
+            table.AddNotPresent("getmetatable", (Func<object, object>)GetMetatable);
+            table.AddNotPresent("ipairs", (Func<LuaTable, Varargs>)IPairs);
+            table.AddNotPresent("load", (Func<Delegate, string, Varargs>)Load);
+            table.AddNotPresent("loadfile", (Func<string, Varargs>)LoadFile);
+            table.AddNotPresent("loadstring", (Func<string, string, Varargs>)LoadString);
+            table.AddNotPresent("next", (Func<LuaTable, object, Varargs>)Next);
+            table.AddNotPresent("pairs", (Func<LuaTable, Varargs>)Pairs);
+            table.AddNotPresent("pcall", (Func<Delegate, object[], Varargs>)PCall);
+            table.AddNotPresent("print", (Action<object[]>)Print);
+            table.AddNotPresent("rawequal", (Func<object, object, bool>)RawEqual);
+            table.AddNotPresent("rawget", (Func<LuaTable, object, object>)RawGet);
+            table.AddNotPresent("rawset", (Func<LuaTable, object, object, object>)RawSet);
+            table.AddNotPresent("require", (Func<string, LuaTable>)Context.RequireLibrary);
+            table.AddNotPresent("select", (Func<object, object[], Varargs>)Select);
+            table.AddNotPresent("setfenv", (Func<object, LuaTable, object>)SetFEnv);
+            table.AddNotPresent("setmetatable", (Func<LuaTable, LuaTable, LuaTable>)SetMetatable);
+            table.AddNotPresent("tonumber", (Func<object, object, object>)ToNumber);
+            table.AddNotPresent("tostring", (Func<object, object>)ToStringEx);
+            table.AddNotPresent("type", (Func<object, string>)Type);
+            table.AddNotPresent("unpack", (Func<LuaTable, object, object, Varargs>)Unpack);
+            table.AddNotPresent("_VERSION", Constant.LUA_VERSION);
+            table.AddNotPresent("xpcall", (Func<Delegate, Delegate, Varargs>)XPCall);
+        }
+
+        public void Clean(IDictionary<string,object> table)
+        {
+            if (table == null)
+                return;
+
+            table.RemoveIfEqual("assert", (Func<object, object, object[], Varargs>)Assert);
+            table.RemoveIfEqual("collectgarbage", (Action<string, string>)CollectGarbage);
+            table.RemoveIfEqual("dofile", (Func<string, object>)DoFile);
+            table.RemoveIfEqual("error", (Action<object, object>)Error);
+            table.RemoveIfEqual("_ENV", table);
+            table.RemoveIfEqual("_G", table);
+            table.RemoveIfEqual("getfenv", (Func<object, object>)GetFEnv);
+            table.RemoveIfEqual("getmetatable", (Func<object, object>)GetMetatable);
+            table.RemoveIfEqual("ipairs", (Func<LuaTable, Varargs>)IPairs);
+            table.RemoveIfEqual("load", (Func<Delegate, string, Varargs>)Load);
+            table.RemoveIfEqual("loadfile", (Func<string, Varargs>)LoadFile);
+            table.RemoveIfEqual("loadstring", (Func<string, string, Varargs>)LoadString);
+            table.RemoveIfEqual("next", (Func<LuaTable, object, Varargs>)Next);
+            table.RemoveIfEqual("pairs", (Func<LuaTable, Varargs>)Pairs);
+            table.RemoveIfEqual("pcall", (Func<Delegate, object[], Varargs>)PCall);
+            table.RemoveIfEqual("print", (Action<object[]>)Print);
+            table.RemoveIfEqual("rawequal", (Func<object, object, bool>)RawEqual);
+            table.RemoveIfEqual("rawget", (Func<LuaTable, object, object>)RawGet);
+            table.RemoveIfEqual("rawset", (Func<LuaTable, object, object, object>)RawSet);
+            table.RemoveIfEqual("select", (Func<object, object[], Varargs>)Select);
+            table.RemoveIfEqual("setfenv", (Func<object, LuaTable, object>)SetFEnv);
+            table.RemoveIfEqual("setmetatable", (Func<LuaTable, LuaTable, LuaTable>)SetMetatable);
+            table.RemoveIfEqual("tonumber", (Func<object, object, object>)ToNumber);
+            table.RemoveIfEqual("tostring", (Func<object, object>)ToStringEx);
+            table.RemoveIfEqual("type", (Func<object, string>)Type);
+            table.RemoveIfEqual("unpack", (Func<LuaTable, object, object, Varargs>)Unpack);
+            table.RemoveIfEqual("_VERSION", Constant.LUA_VERSION);
+            table.RemoveIfEqual("xpcall", (Func<Delegate, Delegate, Varargs>)XPCall);
         }
     }
 }

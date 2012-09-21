@@ -3,12 +3,13 @@ using System.Linq;
 using System.Text;
 using IronLua.Runtime;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
 
 namespace IronLua.Library
 {
     class StringLibrary : Library
     {
-        public StringLibrary(LuaContext context) 
+        public StringLibrary(CodeContext context) 
             : base(context)
         {
         }
@@ -76,20 +77,20 @@ namespace IronLua.Library
         public static string Format(string format, params object[] varargs)
         {
             return StringFormatter.Format(format, varargs);
-        }        
+        }
 
-        public override void Setup(LuaTable table)
+        public override void Setup(IDictionary<string, object> table)
         {
-            table.SetConstant("len", (Func<string, double>) (s => s.Length));
-            table.SetConstant("upper", (Func<string, string>) (s => s.ToUpperInvariant()));
-            table.SetConstant("lower", (Func<string, string>)(s => s.ToLowerInvariant()));
-            table.SetConstant("rep", (Func<string, double, string>) ((s, r) => s.Repeat((int)Math.Round(r, MidpointRounding.ToEven))));
+            table.AddOrSet("len", (Func<string, double>) (s => s.Length));
+            table.AddOrSet("upper", (Func<string, string>) (s => s.ToUpperInvariant()));
+            table.AddOrSet("lower", (Func<string, string>)(s => s.ToLowerInvariant()));
+            table.AddOrSet("rep", (Func<string, double, string>) ((s, r) => s.Repeat((int)Math.Round(r, MidpointRounding.ToEven))));
 
-            table.SetConstant("sub", (Func<string, double, double, string>)Subst); // TODO: varargs
-            table.SetConstant("char", (Func<double[], string>) Char); // TODO: varargs
-            table.SetConstant("byte", (Func<string, double, double, double[]>) Byte); // TODO: varargs
+            table.AddOrSet("sub", (Func<string, double, double, string>)Subst); // TODO: varargs
+            table.AddOrSet("char", (Func<double[], string>) Char); // TODO: varargs
+            table.AddOrSet("byte", (Func<string, double, double, double[]>) Byte); // TODO: varargs
 
-            table.SetConstant("find", (Func<string, string, int?, bool?, object[]>)Find);
+            table.AddOrSet("find", (Func<string, string, int?, bool?, object[]>)Find);
         }
     }
 

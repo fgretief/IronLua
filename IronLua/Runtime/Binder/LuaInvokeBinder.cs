@@ -12,14 +12,15 @@ using IronLua.Util;
 using Microsoft.Scripting.Utils;
 using Expr = System.Linq.Expressions.Expression;
 using Microsoft.Scripting.Actions;
+using IronLua.Compiler.Expressions;
 
 namespace IronLua.Runtime.Binder
 {
     class LuaInvokeBinder : InvokeBinder
     {
-        readonly LuaContext context;
+        readonly CodeContext context;
 
-        public LuaInvokeBinder(LuaContext context, CallInfo callInfo)
+        public LuaInvokeBinder(CodeContext context, CallInfo callInfo)
             : base(callInfo)
         {
             ContractUtils.RequiresNotNull(context, "context");
@@ -34,12 +35,12 @@ namespace IronLua.Runtime.Binder
             var restrictions = RuntimeHelpers.MergeTypeRestrictions(target);
 
             if (target.Value == null)
-                throw new LuaRuntimeException(context, "Attempt to invoke a nil object (" + context.Trace.LastVariableAccess.VariableName + ")");
+                throw LuaRuntimeException.Create(context, "Attempt to invoke a nil object (" + context.CurrentVariableIdentifier + ")");
 
             if (!target.LimitType.IsSubclassOf(typeof(Delegate)) && target.LimitType != typeof(Varargs))
                 return new DynamicMetaObject(
                     MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.Call(context, target, args), context,
-                    new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Lua, context.Trace.CurrentVariableIdentifier + "." + Constant.CALL_METAMETHOD)), restrictions);
+                    new FunctionStack(context, null, null, context.CurrentVariableIdentifier + "." + Constant.CALL_METAMETHOD)), restrictions);
             
 
 
@@ -119,11 +120,7 @@ namespace IronLua.Runtime.Binder
                 expr = Expr.Convert(invokeExpr, typeof(object));
 
             var tempVar = Expr.Variable(typeof(object), "$function_result$");
-            return Expr.Block(new[] { tempVar },
-                LuaTrace.MakePushFunctionCall(context, new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.Invoke,  context.Trace.LastVariableAccess.VariableName)),
-                Expr.Assign(tempVar, expr),
-                LuaTrace.MakePopFunctionCall(context),
-                tempVar);
+            return Expr.Block(new [] {tempVar}, LuaExpressions.FunctionScope(context, null, null, new[] { context.CurrentVariableIdentifier }, Expr.Assign(tempVar, expr)));
         }
 
         IEnumerable<Expr> MapArguments(DynamicMetaObject[] args, MethodInfo methodInfo, ref BindingRestrictions restrictions, out List<Expr> sideEffects, out Expr failExpr)

@@ -13,9 +13,9 @@ namespace IronLua.Runtime.Binder
 {
     class LuaBinder : DefaultBinder
     {
-        private readonly LuaContext _context;
+        private readonly CodeContext _context;
 
-        public LuaBinder(LuaContext context)
+        public LuaBinder(CodeContext context)
         {
             Contract.Requires(context != null);
             _context = context;
@@ -61,7 +61,7 @@ namespace IronLua.Runtime.Binder
             }
             catch (Exception ex)
             {
-                throw new LuaRuntimeException(_context, string.Format("could not find the specified member on '{0}'", type.FullName), ex);
+                throw LuaRuntimeException.Create(_context, string.Format("could not find the specified member on '{0}'", type.FullName), ex);
             }
         }
 
