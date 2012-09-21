@@ -32,13 +32,13 @@ namespace IronLua.Library
             }
 
             if (message == null)
-                throw new LuaRuntimeException(Context, "Assertion failed");
-            throw new LuaRuntimeException(Context, message.ToString());
+                throw LuaRuntimeException.Create(Context, "Assertion failed");
+            throw LuaRuntimeException.Create(Context, message.ToString());
         }
 
         public void CollectGarbage(string opt, string arg = null)
         {
-            throw new LuaRuntimeException(Context, ExceptionMessage.FUNCTION_NOT_IMPLEMENTED);
+            throw LuaRuntimeException.Create(Context, ExceptionMessage.FUNCTION_NOT_IMPLEMENTED);
         }
 
         public object DoFile(string filename = null)
@@ -50,11 +50,11 @@ namespace IronLua.Library
             }
             catch (SyntaxErrorException ex)
             {
-                throw new LuaRuntimeException(Context, ex.Message, ex);
+                throw LuaRuntimeException.Create(Context, ex.Message, ex);
             }
             catch (LuaSyntaxException e)
             {
-                throw new LuaRuntimeException(Context, e.Message, e);
+                throw LuaRuntimeException.Create(Context, e.Message, e);
             }
         }
 
@@ -65,7 +65,17 @@ namespace IronLua.Library
 
         public object GetFEnv(object f = null)
         {
-            throw new LuaRuntimeException(Context, ExceptionMessage.FUNCTION_NOT_IMPLEMENTED);
+            if (f is double)
+            {
+                //stack level
+                var function = Context.GetFunction(Convert.ToInt32(f) - 1);
+                return Context.GetFunctionEnvironment(function.ExecScope);
+            }
+            else if (f is Delegate)
+                return Context.GetFunctionEnvironment(f as Delegate);
+            else
+                return null;
+
         }
 
         public object GetMetatable(object obj)
@@ -168,7 +178,7 @@ namespace IronLua.Library
         public Varargs Next(LuaTable table, object index = null)
         {
             if (table == null)
-                throw new LuaRuntimeException(Context, ExceptionMessage.INVOKE_BAD_ARGUMENT_GOT, "next", "table", "nil");
+                throw LuaRuntimeException.Create(Context, ExceptionMessage.INVOKE_BAD_ARGUMENT_GOT, "next", "table", "nil");
 
             return table.Next(index);
         }
@@ -233,7 +243,7 @@ namespace IronLua.Library
 
             var numIndex = (int)Math.Round(num) - 1;
             if (numIndex >= args.Length || numIndex < 0)
-                throw new LuaRuntimeException(Context, ExceptionMessage.INVOKE_BAD_ARGUMENT, 1, "index out of range");
+                throw LuaRuntimeException.Create(Context, ExceptionMessage.INVOKE_BAD_ARGUMENT, 1, "index out of range");
 
             var returnArgs = new object[args.Length - numIndex];
             Array.Copy(args, numIndex, returnArgs, 0, args.Length - numIndex);
@@ -242,13 +252,24 @@ namespace IronLua.Library
 
         public object SetFEnv(object f, LuaTable table)
         {
-            throw new LuaRuntimeException(Context, ExceptionMessage.FUNCTION_NOT_IMPLEMENTED);
+            if (f is double)
+            {
+                //stack level
+                var function = Context.GetFunction(Convert.ToInt32(f) - 1);
+                Context.SetFunctionEnvironment(function.ExecScope, table);
+            }
+            else if (f is Delegate)            
+                Context.SetFunctionEnvironment(f as Delegate, table);
+            else
+                throw LuaRuntimeException.Create(Context, ExceptionMessage.FUNCTION_NOT_IMPLEMENTED);
+
+            return table;
         }
 
         public LuaTable SetMetatable(LuaTable table, LuaTable metatable)
         {
             if (table.Metatable != null && table.Metatable.GetValue(Constant.METATABLE_METAFIELD) != null)
-                throw new LuaRuntimeException(Context, ExceptionMessage.PROTECTED_METATABLE);
+                throw LuaRuntimeException.Create(Context, ExceptionMessage.PROTECTED_METATABLE);
 
             table.Metatable = metatable;
             return table;
@@ -270,7 +291,7 @@ namespace IronLua.Library
             }
             else if (numBase < 2.0 || numBase > 36.0)
             {
-                throw new LuaRuntimeException(context, ExceptionMessage.INVOKE_BAD_ARGUMENT, 2, "base out of range");
+                throw LuaRuntimeException.Create(context, ExceptionMessage.INVOKE_BAD_ARGUMENT, 2, "base out of range");
             }
 
             string stringStr;
@@ -441,7 +462,7 @@ namespace IronLua.Library
                     return num;
             }
 
-            throw new LuaRuntimeException(context, ExceptionMessage.INVOKE_BAD_ARGUMENT_GOT,
+            throw LuaRuntimeException.Create(context, ExceptionMessage.INVOKE_BAD_ARGUMENT_GOT,
                                           argumentIndex, "number", Type(obj));
         }
 

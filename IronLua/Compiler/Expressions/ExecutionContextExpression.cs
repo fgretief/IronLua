@@ -55,7 +55,7 @@ namespace IronLua.Compiler.Expressions
             return Expression.TryFinally(
                 Expression.Block(
                     CodeContext.OnStartExecute(_context, _scope, _source),
-                    _body),
+                    _body.Reduce()),
                 CodeContext.OnFinishExecute(_context)
             );
         }

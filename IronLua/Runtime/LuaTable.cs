@@ -97,7 +97,7 @@ namespace IronLua.Runtime
                 if (entries[i].HashCode == hashCode && entries[i].Key.Equals(key))
                 {
                     if (entries[i].Locked)
-                        throw new LuaRuntimeException(Context, "Cannot change the value of the constant {0}", key);
+                        throw LuaRuntimeException.Create(Context, "Cannot change the value of the constant {0}", key);
                     entries[i].Value = value;
                     return value;
                 }
@@ -148,7 +148,7 @@ namespace IronLua.Runtime
                 if (entries[i].HashCode == hashCode && entries[i].Key.Equals(key))
                 {
                     if(entries[i].Locked)
-                        throw new LuaRuntimeException(Context, "The constant {0} is already set to {1} and cannot be modified", key, value);
+                        throw LuaRuntimeException.Create(Context, "The constant {0} is already set to {1} and cannot be modified", key, value);
                     else
                     {
                         //TODO: Decide whether or not we should allow a variable to be converted into a constant
@@ -664,7 +664,7 @@ namespace IronLua.Runtime
             public override DynamicMetaObject BindBinaryOperation(BinaryOperationBinder binder, DynamicMetaObject arg)
             {
                 if (!LuaBinaryOperationBinder.BinaryExprTypes.ContainsKey(binder.Operation))
-                    return LuaRuntimeException.Create(Value as LuaTable, "operation {0} not defined for table", binder.Operation.ToString());
+                    return LuaRuntimeException.CreateDMO(Value as LuaTable, "operation {0} not defined for table", binder.Operation.ToString());
 
                 var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.BinaryOp(Value as LuaTable, binder.Operation, this, arg), Value as LuaTable, 
                     new FunctionStack(LuaOps.GetMethodName(binder.Operation)));
@@ -675,7 +675,7 @@ namespace IronLua.Runtime
             public override DynamicMetaObject BindUnaryOperation(UnaryOperationBinder binder)
             {
                 if (binder.Operation != ExprType.Negate)
-                    return LuaRuntimeException.Create(Value as LuaTable, "operation {0} not defined for table", binder.Operation.ToString());
+                    return LuaRuntimeException.CreateDMO(Value as LuaTable, "operation {0} not defined for table", binder.Operation.ToString());
 
                 var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.UnaryMinus(Value as LuaTable, this), Value as LuaTable,
                     new FunctionStack(LuaOps.GetMethodName(binder.Operation)));

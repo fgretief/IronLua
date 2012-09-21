@@ -56,7 +56,7 @@ namespace IronLua.Compiler.Expressions
             return Expression.TryFinally(
                 Expression.Block(
                     Expression.DebugInfo(_document, _span.Start.Line, _span.Start.Column, _span.End.Line, _span.End.Column),
-                    _body),
+                    _body.Reduce()),
                 Expression.ClearDebugInfo(_document)
             );
         }

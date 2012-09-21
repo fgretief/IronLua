@@ -17,7 +17,7 @@ namespace IronLua.Runtime
     //Provides static methods which can be used to create LINQ Expressions
     //for performing different operations used by this CodeContext (as well
     //as the functions which back their usage).
-    internal sealed partial class CodeContext
+    public sealed partial class CodeContext
     {
         static CodeContext()
         {
@@ -66,7 +66,7 @@ namespace IronLua.Runtime
         /// It also adds all the BaseLibrary stuff to this scope to make it accessible
         /// to Lua.
         /// </remarks>
-        public static Expr OnStartExecute(CodeContext context, Expr executingScope, SourceUnit sourceUnit)
+        internal static Expr OnStartExecute(CodeContext context, Expr executingScope, SourceUnit sourceUnit)
         {
             return CallBackingMethod("_OnStartExecute", context, executingScope, Expr.Constant(sourceUnit));
         }
@@ -84,7 +84,7 @@ namespace IronLua.Runtime
         /// as these are added during OnStartExecute, and should be removed afterwards
         /// as they are pure Lua primitives.
         /// </remarks>
-        public static Expr OnFinishExecute(CodeContext context)
+        internal static Expr OnFinishExecute(CodeContext context)
         {
             return CallBackingMethod("_OnFinishExecute", context);
         }
@@ -105,27 +105,37 @@ namespace IronLua.Runtime
             if (ExecutingScopeStorage is LuaTable)
                 (ExecutingScopeStorage as LuaTable).Context = this;
 
+            _LoadedPackages.Clear();
+            _FunctionStacks.Clear();
             _EnvironmentMappings.Clear();   //We clear this here as opposed to in OnFinishExecute in case the last execution failed
-
-            _BaseLibrary.Setup(ExecutingScopeStorage as IDictionary<string, object>);
         }
 
         private void _OnFinishExecute()
         {
-            _BaseLibrary.Clean(ExecutingScopeStorage as IDictionary<string, object>);
+            //Not clearing this here, we will clear it on _OnStartExecute so that we can still use functions defined
+            //from within this CodeContext after it leaves its scope
 
-            ExecutingScope = null;
-            ExecutingScopeStorage = null;
-            _LoadedPackages.Clear();
-            _EnvironmentMappings.Clear();
-            _FunctionStacks.Clear();
+            //ExecutingScope = null;
+            //ExecutingScopeStorage = null;
+            //_LoadedPackages.Clear();
+            //_FunctionStacks.Clear();
         }
 
         #endregion
 
         #region Execution Environment
 
-        public static Expr GetExecutionEnvironment(CodeContext context, LuaScope scope)
+        internal static Expr GetLibraries(CodeContext context)
+        {
+            return CallBackingMethod("_GetLibraries", context);
+        }
+
+        private LuaTable _GetLibraries()
+        {
+            return _Libraries;
+        }
+
+        internal static Expr GetExecutionEnvironment(CodeContext context, LuaScope scope)
         {
             return CallBackingMethod("_GetExecutionEnvironment", context, Expr.Constant(scope));
         }
@@ -137,7 +147,7 @@ namespace IronLua.Runtime
                 current = current.GetParent();
 
             if (current != null)
-                return GetFunctionEnvironment(scope);
+                return GetFunctionEnvironment(current) ?? ExecutingScopeStorage;
 
             return ExecutingScopeStorage;
         }
@@ -148,23 +158,23 @@ namespace IronLua.Runtime
 
         public static ParameterExpression FunctionStackVariable
         { get; private set; }
-        
-        public static Expr PushFunctionStack(Expression context, Expression function)
+
+        internal static Expr PushFunctionStack(Expression context, Expression function)
         {
             return CallBackingMethod("_PushFunctionStack", context, function);
         }
 
-        public static Expr PushFunctionStack(CodeContext context, FunctionStack function)
+        internal static Expr PushFunctionStack(CodeContext context, FunctionStack function)
         {
             return CallBackingMethod("_PushFunctionStack", context, Expr.Constant(function));
         }
 
-        public static Expr PopFunctionStack(CodeContext context)
+        internal static Expr PopFunctionStack(CodeContext context)
         {
             return CallBackingMethod("_PopFunctionStack", context);
         }
 
-        public static Expr PopFunctionStack(Expression context)
+        internal static Expr PopFunctionStack(Expression context)
         {
             return CallBackingMethod("_PopFunctionStack", context);
         }
@@ -178,6 +188,19 @@ namespace IronLua.Runtime
         private void _PopFunctionStack()
         {
             _FunctionStacks.RemoveAt(_FunctionStacks.Count - 1);
+        }
+
+        internal static Expr RegisterFunction(CodeContext context, Expression function, LuaScope scope)
+        {
+            return CallBackingMethod("_RegisterFunction", context, function, Expr.Constant(scope));
+        }
+
+        private void _RegisterFunction(Delegate function, LuaScope scope)
+        {
+            if (!_FunctionScopes.ContainsKey(function))
+                _FunctionScopes.Add(function, scope);
+            else
+                _FunctionScopes[function] = scope;
         }
 
         #region Variable Access
@@ -198,12 +221,12 @@ namespace IronLua.Runtime
             variableAccessStack.Push(variable);
         }
 
-        public static Expr UpdateLastVariableAccess(CodeContext context, VariableAccess variable, Expr value)
+        internal static Expr UpdateLastVariableAccess(CodeContext context, VariableAccess variable, Expr value)
         {
             return CallBackingMethod("_UpdateLastVariableAccess", context, Expr.Constant(variable), value);
         }
 
-        public static Expr OnExceptionThrown(CodeContext context, Expr exception)
+        internal static Expr OnExceptionThrown(CodeContext context, Expr exception)
         {
             return CallBackingMethod("_OnExceptionThrown", context, exception);
         }
@@ -241,12 +264,12 @@ namespace IronLua.Runtime
             //    _FunctionStacks.Last().Locals.Push(backup.Pop());
         }
 
-        public static Expr OnScopeEnter(CodeContext context, LuaScope scope)
+        internal static Expr OnScopeEnter(CodeContext context, LuaScope scope)
         {
             return CallBackingMethod("_OnScopeEnter", context, Expr.Constant(scope));
         }
 
-        public static Expr OnScopeLeave(CodeContext context)
+        internal static Expr OnScopeLeave(CodeContext context)
         {
             return CallBackingMethod("_OnScopeLeave", context);
         }

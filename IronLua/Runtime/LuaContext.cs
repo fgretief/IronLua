@@ -128,45 +128,45 @@ namespace IronLua.Runtime
         //private static Stack<LuaTracebackListener> _tracebackListeners;
         //private static int _tracingThreads;
 
-        //internal Debugging.CompilerServices.DebugContext DebugContext
-        //{
-        //    get
-        //    {
-        //        EnsureDebugContext();
+        internal Debugging.CompilerServices.DebugContext DebugContext
+        {
+            get
+            {
+                EnsureDebugContext();
 
-        //        return _debugContext;
-        //    }
-        //}
+                return _debugContext;
+            }
+        }
 
-        //internal void EnsureDebugContext()
-        //{
-        //    if (_debugContext == null || _tracePipeline == null)
-        //    {
-        //        lock (this)
-        //        {
-        //            if (_debugContext == null)
-        //            {
-        //                _debugContext = Debugging.CompilerServices.DebugContext.CreateInstance();
-        //                _tracePipeline = Debugging.TracePipeline.CreateInstance(_debugContext);
-        //            }
-        //        }
-        //    }
+        internal void EnsureDebugContext()
+        {
+            if (_debugContext == null || _tracePipeline == null)
+            {
+                lock (this)
+                {
+                    if (_debugContext == null)
+                    {
+                        _debugContext = Debugging.CompilerServices.DebugContext.CreateInstance();
+                        _tracePipeline = Debugging.TracePipeline.CreateInstance(_debugContext);
+                    }
+                }
+            }
 
-        //    if (_tracebackListeners == null)
-        //    {
-        //        _tracebackListeners = new Stack<LuaTracebackListener>();
-        //        // push the default listener
-        //        _tracebackListeners.Push(new LuaTracebackListener(this));
-        //    }
-        //}
+            //if (_tracebackListeners == null)
+            //{
+            //    _tracebackListeners = new Stack<LuaTracebackListener>();
+            //    // push the default listener
+            //    _tracebackListeners.Push(new LuaTracebackListener(this));
+            //}
+        }
 
-        //internal Debugging.ITracePipeline TracePipeline
-        //{
-        //    get
-        //    {
-        //        return _tracePipeline;
-        //    }
-        //}
+        internal Debugging.ITracePipeline TracePipeline
+        {
+            get
+            {
+                return _tracePipeline;
+            }
+        }
 
         public bool EnableTracing
         { get; set; }
@@ -329,7 +329,7 @@ namespace IronLua.Runtime
             if (BaseLibraries.ContainsKey(name))
                 return BaseLibraries[name](context);
 
-            throw new LuaRuntimeException(context, "library not found '{0}'", name);
+            throw LuaRuntimeException.Create(context, "library not found '{0}'", name);
         }
 
         void SetupLibraries()

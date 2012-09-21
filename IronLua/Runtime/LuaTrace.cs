@@ -282,7 +282,7 @@ namespace IronLua.Runtime
     //            }
     //        }
 
-    //        throw new LuaRuntimeException(_context, "No variables have been accessed yet");
+    //        throw LuaRuntimeException.Create(_context, "No variables have been accessed yet");
     //    }
 
     //    private void RemoveTopOperation(Stack<VariableAccess> store = null)
@@ -304,7 +304,7 @@ namespace IronLua.Runtime
     //            }
     //        }
 
-    //        throw new LuaRuntimeException(_context, "No variables have been accessed yet");
+    //        throw LuaRuntimeException.Create(_context, "No variables have been accessed yet");
     //    }
 
     //    public static Expression MakeOnScopeEnter(LuaContext context)
@@ -320,7 +320,7 @@ namespace IronLua.Runtime
     //    public VariableAccess GetVariableAccess(int stackLevel, int variableIndex)
     //    {
     //        if (CallStack.Count < stackLevel)
-    //            throw new LuaRuntimeException(_context, "The given stack level was invalid");
+    //            throw LuaRuntimeException.Create(_context, "The given stack level was invalid");
     //        var callStackEntry =  CallStack.ElementAt(stackLevel - 1);
 
     //        if (callStackEntry.Locals.Count < variableIndex)

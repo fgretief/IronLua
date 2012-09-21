@@ -83,7 +83,7 @@ namespace IronLua.Library
                 }
 
                 if (current == null)
-                    throw new LuaRuntimeException(Context, "Another variable is obscuring the type's required namespace name ({0})", rootNamespace);
+                    throw LuaRuntimeException.Create(Context, "Another variable is obscuring the type's required namespace name ({0})", rootNamespace);
 
 
                 string soFar = rootNamespace;
@@ -91,7 +91,7 @@ namespace IronLua.Library
                 foreach (var part in typeNameParts)
                 {
                     if (current == null)
-                        throw new LuaRuntimeException(Context, "Another variable is obscuring the type's required namespace name ({0}.{1})", soFar, part);
+                        throw LuaRuntimeException.Create(Context, "Another variable is obscuring the type's required namespace name ({0}.{1})", soFar, part);
 
                     else if (!current.ContainsKey(part))
                     {
@@ -155,7 +155,7 @@ namespace IronLua.Library
                     }
                     catch (Exception ex)
                     {
-                        throw new LuaRuntimeException(Context, ex.Message, ex);
+                        throw LuaRuntimeException.Create(Context, ex.Message, ex);
                     }
                 
                 var members = type.GetMember(index.ToString(), BindingFlags.Static | BindingFlags.Public);
@@ -167,7 +167,7 @@ namespace IronLua.Library
                     }
                     catch (Exception ex)
                     {
-                        throw new LuaRuntimeException(Context, 
+                        throw LuaRuntimeException.Create(Context, 
                             string.Format("could not get field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.Type(type)), 
                             ex);
                     }
@@ -178,7 +178,7 @@ namespace IronLua.Library
                     }
                     catch (Exception ex)
                     {
-                        throw new LuaRuntimeException(Context,
+                        throw LuaRuntimeException.Create(Context,
                             string.Format("could not get property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.Type(type)),
                             ex);
                     }
@@ -202,7 +202,7 @@ namespace IronLua.Library
                 }
                 catch (Exception ex)
                 {
-                    throw new LuaRuntimeException(Context, ex.Message, ex);
+                    throw LuaRuntimeException.Create(Context, ex.Message, ex);
                 }
             }
             else
@@ -217,7 +217,7 @@ namespace IronLua.Library
                     }
                     catch (Exception ex)
                     {
-                        throw new LuaRuntimeException(Context,
+                        throw LuaRuntimeException.Create(Context,
                             string.Format("could not get field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
                             ex);
                     }
@@ -228,7 +228,7 @@ namespace IronLua.Library
                     }
                     catch (Exception ex)
                     {
-                        throw new LuaRuntimeException(Context,
+                        throw LuaRuntimeException.Create(Context,
                             string.Format("could not get property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
                             ex);
                     }
@@ -237,7 +237,7 @@ namespace IronLua.Library
                     return new BoundMemberTracker(MemberTracker.FromMemberInfo(members.First()), target);
             }
 
-            throw new LuaRuntimeException(Context, "Unable to find a method, field or property identified by '{0}'", index);
+            throw LuaRuntimeException.Create(Context, "Unable to find a method, field or property identified by '{0}'", index);
         }
 
         private object InteropNewIndex(object target, object index, object value)
@@ -256,7 +256,7 @@ namespace IronLua.Library
                     }
                     catch (Exception ex)
                     {
-                        throw new LuaRuntimeException(Context,
+                        throw LuaRuntimeException.Create(Context,
                             string.Format("could not set field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.Type(type)),
                             ex);
                     }
@@ -270,7 +270,7 @@ namespace IronLua.Library
                     }
                     catch (Exception ex)
                     {
-                        throw new LuaRuntimeException(Context,
+                        throw LuaRuntimeException.Create(Context,
                             string.Format("could not set property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.Type(type)),
                             ex);
                     }
@@ -285,7 +285,7 @@ namespace IronLua.Library
                 }
                 catch (Exception ex)
                 {
-                    throw new LuaRuntimeException(Context,
+                    throw LuaRuntimeException.Create(Context,
                         string.Format("could not set indexed value for index '{0}' on array of type '{1}'", index.ToString(), BaseLibrary.Type(target.GetType().GetElementType())),
                         ex);
                 }
@@ -303,7 +303,7 @@ namespace IronLua.Library
                 }
                 catch (Exception ex)
                 {
-                    throw new LuaRuntimeException(Context, 
+                    throw LuaRuntimeException.Create(Context, 
                         string.Format("could not set indexed value for index '{0}' on '{1}'", index.ToString(), BaseLibrary.Type(target.GetType().GetElementType())),
                         ex);
                 }
@@ -322,7 +322,7 @@ namespace IronLua.Library
                     }
                     catch (Exception ex)
                     {
-                        throw new LuaRuntimeException(Context,
+                        throw LuaRuntimeException.Create(Context,
                             string.Format("could not set field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
                             ex);
                     }
@@ -336,14 +336,14 @@ namespace IronLua.Library
                     }
                     catch (Exception ex)
                     {
-                        throw new LuaRuntimeException(Context,
+                        throw LuaRuntimeException.Create(Context,
                             string.Format("could not set property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
                             ex);
                     }
                 }
             }
 
-            throw new LuaRuntimeException(Context, "Unable to find a field or property identified by '{0}'", index);
+            throw LuaRuntimeException.Create(Context, "Unable to find a field or property identified by '{0}'", index);
         }
 
         private object InteropLength(object target)
@@ -351,9 +351,9 @@ namespace IronLua.Library
             if (target is Array)
                 return (double)(target as Array).Length;
             else if (target is LuaTable)
-                throw new LuaRuntimeException(Context, "Cannot get the length of a System.Type object");
+                throw LuaRuntimeException.Create(Context, "Cannot get the length of a System.Type object");
 
-            throw new LuaRuntimeException(Context, "Cannot get the length of a {0} object", target.GetType().FullName);
+            throw LuaRuntimeException.Create(Context, "Cannot get the length of a {0} object", target.GetType().FullName);
         }
 
         /// <summary>
@@ -407,7 +407,7 @@ namespace IronLua.Library
                                 .OrderByDescending(x => ParamsMatch(x, argsTypes)).ToArray();
                 
                 if (methods.Length < 1)
-                    throw new LuaRuntimeException(Context, "Could not find the method '{0}' on {1}", methodName, type.FullName);
+                    throw LuaRuntimeException.Create(Context, "Could not find the method '{0}' on {1}", methodName, type.FullName);
 
                 var method = methods.First();
 
@@ -417,11 +417,11 @@ namespace IronLua.Library
                 }
                 catch (Exception ex)
                 {
-                    throw new LuaRuntimeException(Context, ex.Message, ex);
+                    throw LuaRuntimeException.Create(Context, ex.Message, ex);
                 }
             }
             
-            throw new LuaRuntimeException(Context, BaseLibrary.Type(targetType) + " cannot be called directly as a function. If you want to itterate through the collection, use clr.itterate instead");
+            throw LuaRuntimeException.Create(Context, BaseLibrary.Type(targetType) + " cannot be called directly as a function. If you want to itterate through the collection, use clr.itterate instead");
         }
 
         private object InteropEnumerate(object target, params object[] parameters)
@@ -438,9 +438,9 @@ namespace IronLua.Library
                 return new Varargs(new Func<object, object, object>(InteropIterator), e);
             }
             else
-                throw new LuaRuntimeException(Context, BaseLibrary.Type(target) + " does not implement IEnumerable and cannot be enumerated");
+                throw LuaRuntimeException.Create(Context, BaseLibrary.Type(target) + " does not implement IEnumerable and cannot be enumerated");
 
-            throw new LuaRuntimeException(Context, "bad arguments");
+            throw LuaRuntimeException.Create(Context, "bad arguments");
         }
 
         private object InteropIterator(object iterator, object state)
@@ -469,7 +469,7 @@ namespace IronLua.Library
                     .Where(x => ParamsMatch(x, paramTypes) > 0)
                     .OrderByDescending(x => ParamsMatch(x, paramTypes)).ToArray();
                 if (methods.Length < 1)
-                    throw new LuaRuntimeException(Context, "Could not find a method with the given parameters");
+                    throw LuaRuntimeException.Create(Context, "Could not find a method with the given parameters");
                 
                 var method = methods.First();
 
@@ -479,7 +479,7 @@ namespace IronLua.Library
                 }
                 catch (Exception ex)
                 {
-                    throw new LuaRuntimeException(Context, ex.Message, ex);
+                    throw LuaRuntimeException.Create(Context, ex.Message, ex);
                 }
             }
             else
@@ -492,7 +492,7 @@ namespace IronLua.Library
                     .Where(x => ParamsMatch(x, paramTypes) > 0)
                     .OrderByDescending(x => ParamsMatch(x, paramTypes)).ToArray();
                 if (methods.Length < 1)
-                    throw new LuaRuntimeException(Context, "Could not find a method with the given parameters");
+                    throw LuaRuntimeException.Create(Context, "Could not find a method with the given parameters");
 
                 var method = methods.First();
                 try
@@ -501,7 +501,7 @@ namespace IronLua.Library
                 }
                 catch (Exception ex)
                 {
-                    throw new LuaRuntimeException(Context, ex.Message, ex);
+                    throw LuaRuntimeException.Create(Context, ex.Message, ex);
                 }
             }
         }
@@ -652,12 +652,12 @@ namespace IronLua.Library
                     }
                     catch (Exception ex)
                     {
-                        throw new LuaRuntimeException(Context, ex.Message, ex);
+                        throw LuaRuntimeException.Create(Context, ex.Message, ex);
                     }
 
             } while ((pair = table.Next(pair[0])) != null);
 
-            throw new LuaRuntimeException(Context, "Could not find a method with the given parameters");
+            throw LuaRuntimeException.Create(Context, "Could not find a method with the given parameters");
         }
 
         #endregion
@@ -679,7 +679,7 @@ namespace IronLua.Library
                 if (field != null)
                     return field.GetValue(null);
 
-                throw new LuaRuntimeException(Context, "The static field or property '{0}' was not found", propertyName);
+                throw LuaRuntimeException.Create(Context, "The static field or property '{0}' was not found", propertyName);
             }
 
             //Instance calls
@@ -695,7 +695,7 @@ namespace IronLua.Library
                 if (field != null)
                     return field.GetValue(table);
 
-                throw new LuaRuntimeException(Context, "The instance field or property '{0}' was not found", propertyName);
+                throw LuaRuntimeException.Create(Context, "The instance field or property '{0}' was not found", propertyName);
             }
         }
         
@@ -720,7 +720,7 @@ namespace IronLua.Library
                     return value;
                 }
 
-                throw new LuaRuntimeException(Context, "The static field or property '{0}' was not found", propertyName);
+                throw LuaRuntimeException.Create(Context, "The static field or property '{0}' was not found", propertyName);
             }
 
             //Instance calls
@@ -742,7 +742,7 @@ namespace IronLua.Library
                     return value;
                 }
 
-                throw new LuaRuntimeException(Context, "The static field or property '{0}' was not found", propertyName);
+                throw LuaRuntimeException.Create(Context, "The static field or property '{0}' was not found", propertyName);
             }
         }
         
@@ -766,7 +766,7 @@ namespace IronLua.Library
                     return;
                 }
 
-                throw new LuaRuntimeException(Context, "The static event '{0}' was not found", eventName);
+                throw LuaRuntimeException.Create(Context, "The static event '{0}' was not found", eventName);
             }
 
             //Instance events
@@ -782,7 +782,7 @@ namespace IronLua.Library
                     return;
                 }
 
-                throw new LuaRuntimeException(Context, "The instance event '{0}' was not found", eventName);
+                throw LuaRuntimeException.Create(Context, "The instance event '{0}' was not found", eventName);
             }
         }
 
@@ -801,7 +801,7 @@ namespace IronLua.Library
                     return;
                 }
 
-                throw new LuaRuntimeException(Context, "The static event '{0}' was not found", eventName);
+                throw LuaRuntimeException.Create(Context, "The static event '{0}' was not found", eventName);
             }
 
             //Instance events
@@ -817,7 +817,7 @@ namespace IronLua.Library
                     return;
                 }
 
-                throw new LuaRuntimeException(Context, "The instance event '{0}' was not found", eventName);
+                throw LuaRuntimeException.Create(Context, "The instance event '{0}' was not found", eventName);
             }
         }
 
@@ -868,7 +868,7 @@ namespace IronLua.Library
             else type = typeContainer.GetType();
 
             if (type == null)
-                throw new LuaRuntimeException(Context, "Could not determine type of array to create");
+                throw LuaRuntimeException.Create(Context, "Could not determine type of array to create");
 
             //Ensure that we have an array type for this object
             ImportType(type.MakeArrayType(), false);
@@ -881,7 +881,7 @@ namespace IronLua.Library
             }
             catch (Exception ex)
             {
-                throw new LuaRuntimeException(Context, ex.Message, ex);
+                throw LuaRuntimeException.Create(Context, ex.Message, ex);
             }
         }
 

@@ -55,8 +55,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Compiler\Expressions\ClosureExpression.cs" />
     <Compile Include="Compiler\Expressions\ExecutionContextExpression.cs" />
+    <Compile Include="Compiler\Expressions\FunctionDefinitionExpression.cs" />
     <Compile Include="Compiler\Expressions\FunctionScopeExpression.cs" />
     <Compile Include="Compiler\Expressions\LuaExpressions.cs" />
     <Compile Include="Compiler\Expressions\ScopeExpression.cs" />

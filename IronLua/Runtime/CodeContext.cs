@@ -15,13 +15,16 @@ using System.Runtime.CompilerServices;
 
 namespace IronLua.Runtime
 {
-    internal sealed partial class CodeContext
+    public sealed partial class CodeContext
     {
         public CodeContext(LuaContext language)
         {
             Language = language;
             _metatables = SetupMetatables();
             _BaseLibrary = new BaseLibrary(this);
+            _Libraries = new LuaTable(this);
+
+            _BaseLibrary.Setup(_Libraries as IDictionary<string, object>);
 
 
             _binder = new LuaBinder(this);
@@ -105,28 +108,83 @@ namespace IronLua.Runtime
 
         //Stores Function => Environment mappings to support custom environments for function execution
         private readonly Dictionary<LuaScope, LuaTable> _EnvironmentMappings = new Dictionary<LuaScope, LuaTable>();
+        private readonly Dictionary<Delegate, LuaScope> _FunctionScopes = new Dictionary<Delegate, LuaScope>(new FunctionDelegateComparer());
+
+        private class FunctionDelegateComparer : IEqualityComparer<Delegate>
+        {
+            public bool Equals(Delegate x, Delegate y)
+            {
+                return x.Method.Name.Equals(y.Method.Name);
+            }
+
+            public int GetHashCode(Delegate obj)
+            {
+                return obj.Method.Name.GetHashCode();
+            }
+        }
         
         /// <summary>
         /// Determines whether or not the given function has a custom execution environment
         /// set for it.
         /// </summary>
-        public bool HasCustomEnvironment(LuaScope function)
+        internal bool HasCustomEnvironment(LuaScope function)
         {
             return _EnvironmentMappings.ContainsKey(function);
         }
 
         /// <summary>
+        /// Sets the function environment for a function defined within the given execution scope
+        /// </summary>
+        /// <remarks>
+        /// Technically it is also possible to sandbox scopes (i.e. not only functions) within
+        /// their own environments using this method. However, Lua doesn't by default provide this functionality</remarks>
+        internal void SetFunctionEnvironment(LuaScope function, LuaTable environment)
+        {
+            _EnvironmentMappings.Add(function, environment);
+        }
+
+        /// <summary>
+        /// Sets the function environment for a function defined by the given delegate
+        /// </summary>
+        /// <remarks>
+        /// We use a table which links compiled function delegates to their scopes for this
+        /// </remarks>
+        internal void SetFunctionEnvironment(Delegate functionDelegate, LuaTable environment)
+        {
+            if (!_FunctionScopes.ContainsKey(functionDelegate))
+                return;
+
+            var function = _FunctionScopes[functionDelegate];
+            SetFunctionEnvironment(function, environment);
+        }
+
+        /// <summary>
         /// Gets the custom execution environment for the given function, or null if no environment was set
         /// </summary>
-        public LuaTable GetFunctionEnvironment(LuaScope function)
+        internal LuaTable GetFunctionEnvironment(LuaScope function)
         {
             if (!HasCustomEnvironment(function))
                 return null;
             return _EnvironmentMappings[function];
         }
         
-        #endregion
+        /// <summary>
+        /// Gets the custom execution environment for the given function, or null if no environment was set
+        /// </summary>
+        internal LuaTable GetFunctionEnvironment(Delegate functionDelegate)
+        {
+            if (_FunctionScopes.ContainsKey(functionDelegate))
+                return null;
 
+            var function = _FunctionScopes[functionDelegate];
+
+            if (!HasCustomEnvironment(function))
+                return null;
+            return _EnvironmentMappings[function];
+        }
+        
+        #endregion
+        
         #region Metatable management
 
         readonly Dictionary<Type, LuaTable> _metatables;
@@ -168,7 +226,7 @@ namespace IronLua.Runtime
             if (_metatables.TryGetValue(objType, out table))
                 return table;
 
-            throw new LuaRuntimeException(this, "Could not find metatable for '{0}'", objType.FullName);
+            throw LuaRuntimeException.Create(this, "Could not find metatable for '{0}'", objType.FullName);
         }
 
         internal LuaTable SetTypeMetatable(Type type, LuaTable metatable)
@@ -185,8 +243,7 @@ namespace IronLua.Runtime
         }
 
         #endregion
-
-
+        
         #region Object Operations Support
 
         // These methods is called by the DynamicOperations class that can be
@@ -266,14 +323,21 @@ namespace IronLua.Runtime
         }
 
         #endregion
-
-
+        
         #region Execution Stack
 
         private readonly List<FunctionStack> _FunctionStacks = new List<FunctionStack>();
 
         internal IEnumerable<FunctionStack> FunctionStacks
         { get { return _FunctionStacks; } }
+
+        internal FunctionStack GetFunction(int stackLevel)
+        {
+            if (stackLevel >= _FunctionStacks.Count)
+                throw LuaRuntimeException.Create(this, "invalid stack level");
+
+            return _FunctionStacks[_FunctionStacks.Count - 1 - stackLevel];
+        }
 
         #region Variable Access Stack
 
@@ -286,7 +350,7 @@ namespace IronLua.Runtime
         //thus offsetting the expected variable access stack size by this value
         private int accessStackSizeOffset = 0;
 
-        public VariableAccess LastVariableAccess
+        internal VariableAccess LastVariableAccess
         { get { return variableAccessStack.Count > 0 ? variableAccessStack.Peek() : null; } }
 
         public string CurrentVariableIdentifier
@@ -336,7 +400,7 @@ namespace IronLua.Runtime
                 }
             }
 
-            throw new LuaRuntimeException(this, "No variables have been accessed yet");
+            throw LuaRuntimeException.Create(this, "No variables have been accessed yet");
         }
 
         private void RemoveTopOperation(Stack<VariableAccess> store = null)
@@ -359,7 +423,7 @@ namespace IronLua.Runtime
                 }
             }
 
-            throw new LuaRuntimeException(this, "No variables have been accessed yet");
+            throw LuaRuntimeException.Create(this, "No variables have been accessed yet");
         }
 
         /// <summary>
@@ -369,7 +433,7 @@ namespace IronLua.Runtime
         public IRuntimeVariables GetLocalVariables(int stackLevel)
         {
             if (_FunctionStacks.Count <= stackLevel)
-                throw new LuaRuntimeException(this, "The given stack level was invalid");
+                throw LuaRuntimeException.Create(this, "The given stack level was invalid");
             var callStackEntry = _FunctionStacks[_FunctionStacks.Count - stackLevel];
 
             return callStackEntry.LocalVariables;
@@ -378,7 +442,7 @@ namespace IronLua.Runtime
         public string GetLocalVariableName(int stackLevel, int index)
         {
             if (_FunctionStacks.Count <= stackLevel)
-                throw new LuaRuntimeException(this, "The given stack level was invalid");
+                throw LuaRuntimeException.Create(this, "The given stack level was invalid");
             var callStackEntry = _FunctionStacks[_FunctionStacks.Count - stackLevel];
 
             if (callStackEntry.LocalVariableNames.Length <= index)
@@ -394,7 +458,7 @@ namespace IronLua.Runtime
         public IRuntimeVariables GetUpValues(int stackLevel)
         {
             if (_FunctionStacks.Count <= stackLevel)
-                throw new LuaRuntimeException(this, "The given stack level was invalid");
+                throw LuaRuntimeException.Create(this, "The given stack level was invalid");
             var callStackEntry = _FunctionStacks[_FunctionStacks.Count - stackLevel];
 
             return callStackEntry.UpValues;
@@ -403,7 +467,7 @@ namespace IronLua.Runtime
         public string GetUpValueName(int stackLevel, int index)
         {
             if (_FunctionStacks.Count <= stackLevel)
-                throw new LuaRuntimeException(this, "The given stack level was invalid");
+                throw LuaRuntimeException.Create(this, "The given stack level was invalid");
             var callStackEntry = _FunctionStacks[_FunctionStacks.Count - stackLevel];
 
             if (callStackEntry.UpValueNames.Length <= index)
@@ -418,7 +482,8 @@ namespace IronLua.Runtime
         #region Libraries
 
         private readonly BaseLibrary _BaseLibrary;
-
+        private readonly LuaTable _Libraries;
+        
         //Stores a list of loaded libraries which are implemented in CLR code
         private readonly Dictionary<string, Library.Library> _LoadedBaseLibraries = new Dictionary<string, Library.Library>();
 
@@ -432,7 +497,7 @@ namespace IronLua.Runtime
         /// 
         /// If a Lua file is found with that name, it is executed and its output cached for future access
         /// </summary>
-        public LuaTable RequireLibrary(string libraryName)
+        internal LuaTable RequireLibrary(string libraryName)
         {
             //We can perform any library specific initialization stuff here (which may require things to be set outside of the library's table)
             switch(libraryName)
@@ -453,7 +518,7 @@ namespace IronLua.Runtime
                 _LoadedBaseLibraries[libraryName].Setup(temp);
 
                 //Now we need to set the global variable that this library uses
-                (ExecutingScopeStorage as IDictionary<string, object>).AddOrSet(libraryName, temp);
+                (_Libraries as IDictionary<string, object>).AddOrSet(libraryName, temp);
 
                 return temp;
             }

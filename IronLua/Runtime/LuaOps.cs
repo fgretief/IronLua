@@ -51,7 +51,7 @@ namespace IronLua.Runtime
             if (metamethod != null)
                 return context.DynamicCache.GetDynamicCall1()(metamethod, obj);
 
-            throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "get length of", BaseLibrary.Type(obj));
+            throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "get length of", BaseLibrary.Type(obj));
         }
 
         public static object UnaryMinusMetamethod(CodeContext context, object obj)
@@ -62,7 +62,7 @@ namespace IronLua.Runtime
             if (metamethod != null)
                 return context.DynamicCache.GetDynamicCall1()(metamethod, obj);
 
-            throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "perform arithmetic on", BaseLibrary.Type(obj));
+            throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "perform arithmetic on", BaseLibrary.Type(obj));
         }
 
         public static object IndexMetamethod(CodeContext context, object obj, object key)
@@ -82,7 +82,7 @@ namespace IronLua.Runtime
             if (obj is LuaTable)
                 return null;
 
-            throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "index", BaseLibrary.Type(obj));
+            throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "index", BaseLibrary.Type(obj));
         }
 
         public static object NewIndexMetamethod(CodeContext context, object obj, object key, object value)
@@ -119,7 +119,7 @@ namespace IronLua.Runtime
                 //    , targetParam, keyParam, valParam).Compile()(obj, key, value);
             }
 
-            throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "index", BaseLibrary.Type(obj));
+            throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "index", BaseLibrary.Type(obj));
         }
 
         public static object CallMetamethod(CodeContext context, object obj, object[] args)
@@ -135,7 +135,7 @@ namespace IronLua.Runtime
                 return context.DynamicCache.GetDynamicCall1()(metamethod, new Varargs(array));
             }
 
-            throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "call", BaseLibrary.Type(obj));
+            throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "call", BaseLibrary.Type(obj));
         }
 
         public static object ConcatMetamethod(CodeContext context, object left, object right)
@@ -148,7 +148,7 @@ namespace IronLua.Runtime
                 return context.DynamicCache.GetDynamicCall2()(metamethod, left, right);
 
             var typeName = left is string ? BaseLibrary.Type(left) : BaseLibrary.Type(right);
-            throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "concatenate", typeName);
+            throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "concatenate", typeName);
         }
 
         public static object BinaryOpMetamethod(CodeContext context, ExprType op, object left, object right)
@@ -193,7 +193,7 @@ namespace IronLua.Runtime
                 return context.DynamicCache.GetDynamicCall2()(metamethod, left, right);
 
             var typeName = BaseLibrary.Type(BaseLibrary.ToNumber(context, left) == null ? left : right);
-            throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_ERROR, "perform arithmetic on", typeName);
+            throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "perform arithmetic on", typeName);
         }
         
         public static object RelationalMetamethod(CodeContext context, ExprType op, object left, object right)
@@ -204,7 +204,7 @@ namespace IronLua.Runtime
             var rightTypeName = BaseLibrary.Type(right);
 
             //if (left.GetType() != right.GetType())
-            //    throw new LuaRuntimeException(ExceptionMessage.OP_TYPE_WITH_ERROR, "compare", leftTypeName, rightTypeName);
+            //    throw LuaRuntimeException.Create(ExceptionMessage.OP_TYPE_WITH_ERROR, "compare", leftTypeName, rightTypeName);
 
             // There are no metamethods for 'a > b' and 'a >= b' so they are translated to 'b < a' and 'b <= a' respectively
             var invert = op == ExprType.GreaterThan || op == ExprType.GreaterThanOrEqual;
@@ -221,7 +221,7 @@ namespace IronLua.Runtime
 
             // In the absence of a '<=' metamethod, try '<', 'a <= b' is translated to 'not (b < a)'
             if (op != ExprType.LessThanOrEqual && op != ExprType.GreaterThanOrEqual)
-                throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_WITH_ERROR, "compare", leftTypeName, rightTypeName);
+                throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_WITH_ERROR, "compare", leftTypeName, rightTypeName);
 
             metamethod = GetRelationalMetamethod(context, ExprType.LessThan, left, right);
             if (metamethod != null)
@@ -233,8 +233,8 @@ namespace IronLua.Runtime
             }
 
             if (leftTypeName == rightTypeName)
-                throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_TWO_ERROR, "compare", leftTypeName);
-            throw new LuaRuntimeException(context, ExceptionMessage.OP_TYPE_WITH_ERROR, "compare", leftTypeName, rightTypeName);
+                throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_TWO_ERROR, "compare", leftTypeName);
+            throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_WITH_ERROR, "compare", leftTypeName, rightTypeName);
         }
         
         public static object EquateMetamethod(CodeContext context, ExprType op, object left, object right)

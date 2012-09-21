@@ -52,7 +52,7 @@ namespace IronLua.Compiler.Expressions
             return Expression.TryFinally(
                 Expression.Block(
                     CodeContext.OnScopeEnter(_context, _scope),
-                    _body),
+                    _body.Reduce()),
                 CodeContext.OnScopeLeave(_context)
             );
         }

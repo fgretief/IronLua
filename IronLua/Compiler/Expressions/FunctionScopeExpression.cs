@@ -128,7 +128,7 @@ namespace IronLua.Compiler.Expressions
                         Expression.RuntimeVariables(_upScope.GetLocals())
                     ));
 
-            blockExpressions.Add(_body);
+            blockExpressions.Add(_body.Reduce());
 
             return Expression.TryFinally(
                 Expression.Block(new[] { CodeContext.FunctionStackVariable }, blockExpressions),

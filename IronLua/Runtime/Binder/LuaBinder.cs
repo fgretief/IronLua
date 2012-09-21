@@ -61,7 +61,7 @@ namespace IronLua.Runtime.Binder
             }
             catch (Exception ex)
             {
-                throw new LuaRuntimeException(_context, string.Format("could not find the specified member on '{0}'", type.FullName), ex);
+                throw LuaRuntimeException.Create(_context, string.Format("could not find the specified member on '{0}'", type.FullName), ex);
             }
         }
 

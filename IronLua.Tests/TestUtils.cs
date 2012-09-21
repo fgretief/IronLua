@@ -109,6 +109,11 @@ namespace IronLua.Tests
             {
                 return action(engine);
             }
+            catch(Exception ex)
+            {
+                ex.ToString();
+                return null;
+            }
             finally
             {
                 // Ensure the two writers' buffer has been flushed to the MemoryStream

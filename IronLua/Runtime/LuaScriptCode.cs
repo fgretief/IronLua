@@ -47,11 +47,11 @@ namespace IronLua.Runtime
             }
             catch (MissingMemberException mmex)
             {
-                throw new LuaRuntimeException(Context, "could not find the member '" + mmex.Message + "' on '" + Context.CurrentVariableIdentifier + "'", mmex);
+                throw LuaRuntimeException.Create(Context, "could not find the member '" + mmex.Message + "' on '" + Context.CurrentVariableIdentifier + "'", mmex);
             }
             catch (Exception ex)
             {
-                throw new LuaRuntimeException(Context, ex.Message, ex);
+                throw LuaRuntimeException.Create(Context, ex.Message, ex);
             }
         }
     }

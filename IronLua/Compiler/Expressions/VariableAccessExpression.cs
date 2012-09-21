@@ -54,7 +54,7 @@ namespace IronLua.Compiler.Expressions
             return Expression.Block(
                         _variable.Type,
                         new[] { temp },
-                        Expression.Assign(temp, _variable),
+                        Expression.Assign(temp, _variable.Reduce()),
                         CodeContext.UpdateLastVariableAccess(_context, _access, temp),
                         temp);
         }

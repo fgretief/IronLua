@@ -6,6 +6,7 @@ using System.Threading;
 using Expr = System.Linq.Expressions.Expression;
 using ParamExpr = System.Linq.Expressions.ParameterExpression;
 using IronLua.Runtime;
+using System.Dynamic;
 
 namespace IronLua.Compiler
 {
@@ -14,6 +15,9 @@ namespace IronLua.Compiler
         const string BreakLabelName = "@break";
         const string ReturnLabelName = "@return";
 
+
+
+        static readonly ParamExpr _DlrGlobals = Expr.Parameter(typeof(IDynamicMetaObjectProvider), "_ENV");
         readonly LuaScope parent;
         readonly CodeContext context;
         readonly Dictionary<string, ParamExpr> variables;

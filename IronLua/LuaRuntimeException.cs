@@ -15,37 +15,49 @@ namespace IronLua
     [Serializable]
     public class LuaRuntimeException : LuaException
     {
-        internal static readonly ConstructorInfo Constructor1 = typeof(LuaRuntimeException).GetConstructor(new[] { typeof(CodeContext), typeof(string), typeof(Exception) });
-        internal static readonly ConstructorInfo Constructor2 = typeof(LuaRuntimeException).GetConstructor(new[] { typeof(CodeContext), typeof(string), typeof(object[]) });
+        internal static readonly ConstructorInfo Constructor1 = typeof(LuaRuntimeException).GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance, null,
+            new[] { typeof(CodeContext), typeof(string), typeof(Exception) }, null);
+        internal static readonly ConstructorInfo Constructor2 = typeof(LuaRuntimeException).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null,
+            new[] { typeof(CodeContext), typeof(string), typeof(object[]) }, null);
 
-        internal static DynamicMetaObject Create(LuaTable table, string message= null, Exception inner = null)
+        internal static DynamicMetaObject CreateDMO(LuaTable table, string message= null, Exception inner = null)
         {
-            return Create(Expression.Property(Expression.Constant(table, typeof(LuaTable)), "Context"), message, inner);
+            return CreateDMO(Expression.Property(Expression.Constant(table, typeof(LuaTable)), "Context"), message, inner);
         }
-        internal static DynamicMetaObject Create(Expression context, string message = null, Exception inner = null)
+        internal static DynamicMetaObject CreateDMO(Expression context, string message = null, Exception inner = null)
         {
             var e = Expression.New(Constructor1, context, Expression.Constant(message), Expression.Constant(inner));
             return new DynamicMetaObject(e, BindingRestrictions.Empty);
         }
 
-        internal static DynamicMetaObject Create(LuaTable table, string message = null, params object[] args)
+        internal static DynamicMetaObject CreateDMO(LuaTable table, string message = null, params object[] args)
         {
-            return Create(Expression.Property(Expression.Constant(table, typeof(LuaTable)), "Context"), message, args);
+            return CreateDMO(Expression.Property(Expression.Constant(table, typeof(LuaTable)), "Context"), message, args);
         }
-        internal static DynamicMetaObject Create(Expression context, string format = null, params object[] args)
+        internal static DynamicMetaObject CreateDMO(Expression context, string format = null, params object[] args)
         {
             var e = Expression.New(Constructor2, context, Expression.Constant(format), Expression.Constant(args));
             return new DynamicMetaObject(e, BindingRestrictions.Empty);
         }
 
-        internal LuaRuntimeException(CodeContext context, string message = null, Exception inner = null)
+        internal static LuaRuntimeException Create(CodeContext context, string message = null, Exception inner = null)
+        {
+            return new LuaRuntimeException(context, message, inner);
+        }
+
+        internal static LuaRuntimeException Create(CodeContext context, string format, params object[] args)
+        {
+            return new LuaRuntimeException(context, format, args);
+        }
+
+        protected LuaRuntimeException(CodeContext context, string message = null, Exception inner = null)
             : base(message, inner)
         {
             Context = context;
             stack = new Stack<FunctionStack>(context.FunctionStacks.Reverse());
         }
 
-        internal LuaRuntimeException(CodeContext context, string format, params object[] args)
+        protected LuaRuntimeException(CodeContext context, string format, params object[] args)
             : base(String.Format(format, args))
         {
             Context = context;

@@ -149,14 +149,16 @@ namespace IronLua.Compiler
                 if (function.HasVarargs)
                     parameters.Add(scope.AddLocal(Constant.VARARGS, typeof(Varargs)));
                 
-                var bodyExpr = Expr.Block(Visit(function.Body),
+                var bodyExpr = Expr.Block(
+                                Visit(function.Body),
                                 Expr.Label(scope.GetReturnLabel(), Expr.Constant(null)));
 
                 var funcName = Constant.FUNCTION_PREFIX + name.Identifiers.Last();
                 
-                return Expr.Lambda(
-                        LuaExpr.FunctionScope(context, scope, parentScope, name.Identifiers, bodyExpr).Reduce(),
-                    funcName, true, parameters).Reduce();
+                return LuaExpr.FunctionDefinitionExpression(context, scope, name.Identifiers, 
+                    Expr.Lambda(
+                        LuaExpr.FunctionScope(context, scope, parentScope, name.Identifiers, bodyExpr),
+                    funcName, true, parameters));
             }
             finally
             {
@@ -259,7 +261,7 @@ namespace IronLua.Compiler
             //We create a new scope here to hold the function's up values
             try
             {
-                scope = LuaScope.CreateFunctionChildFrom(scope);
+                //scope = LuaScope.CreateFunctionChildFrom(scope);
 
                 bodyExpr = Visit(statement.Name, statement.Body);
             }
@@ -329,7 +331,7 @@ namespace IronLua.Compiler
             {
                 //We create a new scope here which represents the "up scope", basically
                 //a store for our function's up values
-                scope = LuaScope.CreateFunctionChildFrom(scope);
+                //scope = LuaScope.CreateFunctionChildFrom(scope);
 
                 return LuaExpr.SourceSpan(_document, statement.Span,
                         Expr.Assign(localExpr, bodyExpr));
@@ -446,7 +448,17 @@ namespace IronLua.Compiler
 
         Expr IExpressionVisitor<Expr>.Visit(Expression.Function expression)
         {
-            return LuaExpr.SourceSpan(_document, expression.Span, Visit(new FunctionName("lambda"), expression.Body));
+            var parentScope = scope;
+            try
+            {
+                //scope = LuaScope.CreateFunctionChildFrom(parentScope);
+
+                return LuaExpr.SourceSpan(_document, expression.Span, Visit(new FunctionName("lambda_" + Guid.NewGuid().ToString()), expression.Body));
+            }
+            finally
+            {
+                scope = parentScope;
+            }
         }
 
         Expr IExpressionVisitor<Expr>.Visit(Expression.Nil expression)
@@ -558,30 +570,35 @@ namespace IronLua.Compiler
         }
 
 
-        Expr CreateGlobalGetMember(string identifier, ScopeStorage globals, LuaScope scope)
+        Expr CreateGlobalGetMember(string identifier, ScopeStorage globals, Expr libraries, LuaScope scope)
         {
             var temp = Expr.Parameter(typeof(object));
 
             var ex = Expr.Parameter(typeof(Exception), "$ex$");
+            var target = Expr.Parameter(typeof(IDynamicMetaObjectProvider), "$global_get_target$");
+
+
+            Func<Expr, Expr> makeVariableAccess = t => LuaExpr.VariableAccess(context, Expr.Assign(temp, Expr.Dynamic(context.CreateGetMemberBinder(identifier, false),
+                                    typeof(object), t)), new VariableAccess(identifier, AccessType.GlobalGet));
 
             if (globals.HasValue(identifier, false))
                 return Expr.Block(
                     typeof(object),
                     scope.AllLocals().Add(temp),
                     Expr.Assign(temp, Expr.Constant(null)),
-                    Expr.TryCatch(Expr.Assign(temp, Expr.Dynamic(context.CreateGetMemberBinder(identifier, false),
-                                    typeof(object), Expr.Constant(globals))),
+                    Expr.TryCatch(makeVariableAccess(Expr.Constant(globals)),
                                     Expr.Catch(ex, Expr.Block(CodeContext.OnExceptionThrown(context, ex), Expr.Constant(null)))),
-                    LuaExpr.VariableAccess(context, temp, new VariableAccess(identifier, AccessType.GlobalGet)),
                     temp);
+                        
 
+            var scopeGlobals = scope.GetDlrGlobals();
 
             return Expr.Block(
                     typeof(object),
-                    scope.AllLocals().Add(temp),
+                    scope.AllLocals().Add(temp).Add(target),
                     Expr.Assign(temp, Expr.Constant(null)),
-                    Expr.TryCatch(LuaExpr.VariableAccess(context, Expr.Assign(temp, Expr.Dynamic(context.CreateGetMemberBinder(identifier, false),
-                                    typeof(object), scope.GetDlrGlobals())), new VariableAccess(identifier, AccessType.GlobalGet)),
+                    Expr.Assign(target, Expr.Condition(Expr.Equal(makeVariableAccess(scopeGlobals), Expr.Constant(null)), libraries, scopeGlobals, typeof(IDynamicMetaObjectProvider))),
+                    Expr.TryCatch(makeVariableAccess(target),
                                     Expr.Catch(ex, Expr.Block(CodeContext.OnExceptionThrown(context, ex), Expr.Constant(null)))),
                     temp);
 
@@ -598,7 +615,7 @@ namespace IronLua.Compiler
                     if (scope.TryGetLocal(variable.Identifier, out local))
                         return local;
 
-                    return CreateGlobalGetMember(variable.Identifier, context.Language.DomainManager.Globals.Storage, scope);
+                    return CreateGlobalGetMember(variable.Identifier, context.Language.DomainManager.Globals.Storage, CodeContext.GetLibraries(context), scope);
                     
                     //return Expr.Dynamic(context.CreateGetMemberBinder(variable.Identifier, false),
                     //                    typeof(object), Expr.Constant(context.Globals));
@@ -774,7 +791,7 @@ namespace IronLua.Compiler
             if (isLocal)
                 expr = LuaExpr.VariableAccess(context, local, new VariableAccess(identifiers[0], AccessType.LocalGet));
             else
-                expr = CreateGlobalGetMember(firstId, context.EngineGlobals.Storage, scope);
+                expr = CreateGlobalGetMember(firstId, context.EngineGlobals.Storage, CodeContext.GetLibraries(context), scope);
                     //Expr.Dynamic(context.CreateGetMemberBinder(firstId, false),
                     //                        typeof(object),
                     //                        Expr.Constant(context.Globals));

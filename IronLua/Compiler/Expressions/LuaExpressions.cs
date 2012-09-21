@@ -48,6 +48,16 @@ namespace IronLua.Compiler.Expressions
             return new FunctionScopeExpression(context, identifier, body).Reduce();
         }
         
+        
+        /// <summary>
+        /// Wraps a new function definition, so that the function can be registered as a Lua function with the relevant
+        /// CodeContext. This allows the function to benefit from custom execution environments.
+        /// </summary>
+        public static Expr FunctionDefinitionExpression(CodeContext context, LuaScope scope, IEnumerable<string> identifiers, LambdaExpression function)
+        {
+            return new FunctionDefinitionExpression(context, scope, identifiers, function).Reduce();
+        }
+
         /// <summary>
         /// Wraps an expression in <see cref="DebugInfoExpression"/>s which indicate the <see cref="SouceSpan"/> where it is defined
         /// </summary>
