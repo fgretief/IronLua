@@ -323,15 +323,16 @@ namespace IronLua.Compiler
 
         Expr IStatementVisitor<Expr>.Visit(Statement.LocalFunction statement)
         {
-            var bodyExpr = Visit(statement.Name, statement.Body);
-            var localExpr = scope.AddLocal(statement.Name.Identifiers.Last());
-
             var parentScope = scope;
+                        
             try
             {
                 //We create a new scope here which represents the "up scope", basically
                 //a store for our function's up values
                 //scope = LuaScope.CreateFunctionChildFrom(scope);
+
+                var localExpr = scope.AddLocal(statement.Name.Identifiers.Last());
+                var bodyExpr = Visit(statement.Name, statement.Body);
 
                 return LuaExpr.SourceSpan(_document, statement.Span,
                         Expr.Assign(localExpr, bodyExpr));
