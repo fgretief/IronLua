@@ -337,7 +337,7 @@ namespace IronLua.Runtime
             BaseLibraries.Add("clr", x => new InteropLibrary(x));
             BaseLibraries.Add("debug", x => new DebugLibrary(x));
             //TODO: IO Library
-            BaseLibraries.Add("math", x => new BaseLibrary(x));
+            BaseLibraries.Add("math", x => new MathLibrary(x));
             BaseLibraries.Add("os", x => new OSLibrary(x));
             BaseLibraries.Add("package", x => new PackageLibrary(x));
             BaseLibraries.Add("string", x => new StringLibrary(x));

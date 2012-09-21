@@ -25,7 +25,7 @@ namespace IronLua.Runtime
             _Libraries = new LuaTable(this);
 
             _BaseLibrary.Setup(_Libraries as IDictionary<string, object>);
-
+            _BaseLibrary.SetMetatable(_Libraries, MakeStandardLibrariesMetatable());
 
             _binder = new LuaBinder(this);
             _dynamicCache = new DynamicCache(this);
@@ -490,6 +490,38 @@ namespace IronLua.Runtime
         //Stores a list of loaded packages, these are both CLR libraries and Lua code pieces which have been executed with "require"
         //In the case of packages loaded with "require" this just stores the table returned from that call, which should represent the library
         private readonly Dictionary<string, IDictionary<string, object>> _LoadedPackages = new Dictionary<string, IDictionary<string, object>>();
+
+        private void LoadStandardLibraries()
+        {
+            //We want to load our base libraries into Lua so that the user doesn't need
+            //to run "require 'library'" to get access to them.
+            //This method allows us to do that, but if possible we would rather instantiate
+            //libraries on demand, so we use a metamethod fallback on our libraries table
+            //which will retreive the relevant base library when it is requested
+
+            RequireLibrary("clr");
+            RequireLibrary("io");
+            RequireLibrary("math");
+            RequireLibrary("os");
+            RequireLibrary("package");
+            RequireLibrary("string");
+            RequireLibrary("table");
+        }
+
+        private LuaTable MakeStandardLibrariesMetatable()
+        {
+            var temp = new LuaTable(this);
+            temp.SetValue("__index", (Func<object, object, object>)LibrariesFallbackIndex);
+
+            return temp;
+        }
+
+        private object LibrariesFallbackIndex(object table, object index)
+        {
+            if (Language.IsBaseLibrary(index.ToString()))            
+                return RequireLibrary(index.ToString());
+            return null;
+        }
 
         /// <summary>
         /// Loads the given library, attempting first to locate a CLR library with that name, and if that fails, then falls back on
