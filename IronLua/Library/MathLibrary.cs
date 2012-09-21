@@ -60,7 +60,18 @@ namespace IronLua.Library
 
             // Pseudo-random numbers
             table.AddOrSet("randomseed", (Func<double, double>)(x => { rand = new Random((int)x); return rand.NextDouble(); }));
-            table.AddOrSet("random", (Func<double, double, double>)((min,max) => { return (double)rand.Next((int)min,(int)max); })); // overloaded
+            table.AddOrSet("random", (Func<Varargs, double>)Random); // overloaded
+        }
+
+        private double Random(Varargs args = null)
+        {
+            if (args == null || args.Count == 0)
+                return rand.NextDouble();
+            else if (args.Count == 1)
+                return rand.Next(1, 1 + Convert.ToInt32(args[0]));
+            else if (args.Count >= 2)
+                return rand.Next(Convert.ToInt32(args[0]), 1 + Convert.ToInt32(args[1]));
+            return 0;
         }
     }
 }
