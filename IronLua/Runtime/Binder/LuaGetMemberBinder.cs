@@ -10,9 +10,10 @@ namespace IronLua.Runtime.Binder
     {
         private readonly CodeContext _context;
 
-        public LuaGetMemberBinder(string name, bool ignoreCase = false)
+        public LuaGetMemberBinder(CodeContext context, string name, bool ignoreCase = false)
             : base(name, ignoreCase)
         {
+            _context = context;
         }
 
         DynamicMetaObject MakeScriptScopeGetMember(DynamicMetaObject target, string name)

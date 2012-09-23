@@ -276,15 +276,26 @@ namespace IronLua.Runtime.Binder
                                 Expr.Constant((Func<object, string>)BaseLibrary.Type),
                                 Expr.Convert(obj, typeof(object)));
 
+                        Expr got = null;
+                        try
+                        {
+                            got = typeNameExpr(Expr.Constant(Activator.CreateInstance(param.ParameterType)));
+                        }
+                        catch
+                        {
+                            got = Expr.Constant(param.ParameterType.FullName);
+                        }
+
                         // Ugly reflection hack
                         failExpr = Expr.Throw(
                             Expr.New(
                                 MemberInfos.NewRuntimeException,
+                                Expr.Constant(context),
                                 Expr.Constant(ExceptionMessage.INVOKE_BAD_ARGUMENT_GOT),
                                 Expr.NewArrayInit(
                                     typeof(object),
                                     Expr.Constant(i + 1, typeof(object)),
-                                    typeNameExpr(Expr.Constant(Activator.CreateInstance(param.ParameterType))),
+                                    got,
                                     typeNameExpr(arg.Expression))));
                         break;
                     }

@@ -16,7 +16,7 @@ namespace IronLua.Library
         public InteropLibrary(CodeContext context, params Type[] types)
             : base(context)
         {
-            InteropMetatable = GenerateMetatable();
+            InteropMetatable = GenerateMetatable(context);
         }
 
         public override void Setup(IDictionary<string, object> table)
@@ -48,11 +48,11 @@ namespace IronLua.Library
             return ImportType(type, genNamespaces);
         }
 
-        internal static LuaTable GetTypeTable(Type type)
+        internal LuaTable GetTypeTable(Type type)
         {
             if (type != null)
             {
-                var table = new LuaTable();
+                var table = new LuaTable(Context);
                 table.SetConstant("__clrtype", type);
                 table.Metatable = InteropMetatable;
 
@@ -116,9 +116,9 @@ namespace IronLua.Library
             return GetTypeTable(type);
         }
 
-        internal LuaTable GenerateMetatable()
+        internal LuaTable GenerateMetatable(CodeContext context)
         {
-            LuaTable table = new LuaTable(Context);
+            LuaTable table = new LuaTable(context);
             table.SetConstant(Constant.INDEX_METAMETHOD, (Func<object, object, object>)InteropIndex);
             table.SetConstant(Constant.NEWINDEX_METAMETHOD, (Func<object, object, object, object>)InteropNewIndex);
             table.SetConstant(Constant.CALL_METAMETHOD, (Func<object, object[], object>)InteropCall);

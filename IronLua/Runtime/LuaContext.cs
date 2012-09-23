@@ -183,16 +183,16 @@ namespace IronLua.Runtime
         //System.Collections.Generic.Dictionary<..> - LuaTable (CLR type wrapper)
         private readonly Dictionary<string, LuaTable> _clrNamespaces = new Dictionary<string, LuaTable>();
 
-        internal LuaTable GetCLRNamespace(string @namespace)
-        {
-            if (_clrNamespaces.ContainsKey(@namespace))
-                return _clrNamespaces[@namespace];
+        //internal LuaTable GetCLRNamespace(string @namespace)
+        //{
+        //    if (_clrNamespaces.ContainsKey(@namespace))
+        //        return _clrNamespaces[@namespace];
 
-            var typeTable = InteropLibrary.GetTypeTable(Type.GetType(@namespace, false));
-            if(typeTable != null)
-                _clrNamespaces.Add(@namespace, typeTable);
-            return typeTable;
-        }
+        //    var typeTable = InteropLibrary.GetTypeTable(Type.GetType(@namespace, false));
+        //    if(typeTable != null)
+        //        _clrNamespaces.Add(@namespace, typeTable);
+        //    return typeTable;
+        //}
 
         #endregion
         

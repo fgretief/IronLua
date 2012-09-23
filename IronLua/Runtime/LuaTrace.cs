@@ -395,7 +395,7 @@ namespace IronLua.Runtime
 
         public FunctionStack(CodeContext context, LuaScope upScope, LuaScope execScope, string identifier)
         {
-            Assert.NotNull(context);
+            ContractUtils.Requires(context != null);
 
             Context = context;
             UpScope = upScope;

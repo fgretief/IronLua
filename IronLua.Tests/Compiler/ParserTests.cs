@@ -72,8 +72,8 @@ namespace IronLua.Tests.Compiler
 
         public static class LuaTestSuiteSource
         {
-            public static readonly string Lua52TestSuitePath = TestUtils.GetTestPath(@"lua-5.2.0-tests");
-            public static readonly string Lua51TestSuitePath = TestUtils.GetTestPath(@"lua-5.1-tests");
+            public static readonly string Lua52TestSuitePath = TestUtils.GetTestPath(@"IronLua.Tests\\Scripts\\lua-5.2.1-tests");
+            public static readonly string Lua51TestSuitePath = TestUtils.GetTestPath(@"IronLua.Tests\\Scripts\\lua-5.1-tests");
 
             public static string[] LuaTestSuiteFiles = new[]
             {

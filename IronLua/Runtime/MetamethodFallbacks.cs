@@ -16,7 +16,7 @@ namespace IronLua.Runtime
             var context = Expr.Property(Expr.Constant(parentTable), "Context");
 
             return Expr.Block(new [] { tempVar },                 
-                LuaExpr.FunctionScope(context, callSite.ExecScope, callSite.UpScope, callSite.Identifier, Expr.Assign(tempVar, expr)));
+                LuaExpr.FunctionScope(context, callSite.Identifier, Expr.Assign(tempVar, expr)));
         }
 
         public static Expr WrapStackTrace(Expr expr, CodeContext context, FunctionStack callSite)

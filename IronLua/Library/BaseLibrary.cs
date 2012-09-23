@@ -494,7 +494,12 @@ namespace IronLua.Library
             var parser = new Parser(lexer, lexer.ErrorSink);
             var ast = parser.Parse();
             var gen = new Generator(context);
-            var expr = gen.CompileInline(ast, context.FunctionStacks.Last().ExecScope, context.ExecutingScopeStorage, sourceUnit);
+
+            var fnStack =context.FunctionStacks.LastOrDefault(x => x.ExecScope != null);
+            if (fnStack == default(FunctionStack))
+                fnStack = new FunctionStack(context, null, LuaScope.CreateRoot(context), "=(compiled code)");
+
+            var expr = gen.CompileInline(ast, fnStack.ExecScope, context.ExecutingScopeStorage, sourceUnit);
             return expr.Compile();
         }
 

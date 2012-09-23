@@ -25,7 +25,7 @@ namespace IronLua.Runtime
         int freeCount;
         int count;
 
-        internal CodeContext Context
+        public CodeContext Context
         { get; set; }
 
         public LuaTable()
@@ -692,7 +692,7 @@ namespace IronLua.Runtime
 
             public override DynamicMetaObject BindInvokeMember(InvokeMemberBinder binder, DynamicMetaObject[] args)
             {
-                var expression = Expr.Dynamic(new LuaGetMemberBinder(binder.Name), typeof(object), Expression);
+                var expression = Expr.Dynamic(new LuaGetMemberBinder((Value as LuaTable).Context, binder.Name), typeof(object), Expression);
                 return binder.FallbackInvoke(new DynamicMetaObject(expression, Restrictions), args, null);
             }
 
@@ -720,7 +720,9 @@ namespace IronLua.Runtime
                         Expr.Equal(valueVar, Expr.Constant(null)),
                         
                         MetamethodFallbacks.WrapStackTrace(
-                            MetamethodFallbacks.Index(Value as LuaTable, this, new[] { new DynamicMetaObject(Expr.Constant(binder.Name), BindingRestrictions.Empty, binder.Name) }), Value as LuaTable,
+                            MetamethodFallbacks.Index(Value as LuaTable, this, 
+                                new[] { new DynamicMetaObject(Expr.Constant(binder.Name), BindingRestrictions.Empty, binder.Name) }), 
+                            Value as LuaTable,
                             new FunctionStack(Constant.INDEX_METAMETHOD)),
                         valueVar));
 
