@@ -90,10 +90,10 @@ namespace IronLua.Compiler
                 _document = sourceUnit.Document ?? Expr.SymbolDocument("(chunk)", sourceUnit.LanguageContext.LanguageGuid, sourceUnit.LanguageContext.VendorGuid);
 
             ParameterExpression dlrGlobals = Expr.Parameter(typeof(IDynamicMetaObjectProvider), "$DLR_Scope$");
-            scope = evaluationScope;
+            scope = evaluationScope.GetParent() ?? evaluationScope;
 
             var blockExpr = Visit(block);
-            var expr = Expr.Block(new[] { dlrGlobals }, 
+            var expr = Expr.Block(new [] { dlrGlobals }, 
                 Expr.Assign(dlrGlobals, Expr.Constant(runtimeScope)), 
                 blockExpr, 
                 Expr.Label(scope.GetReturnLabel(), 
@@ -324,14 +324,14 @@ namespace IronLua.Compiler
         Expr IStatementVisitor<Expr>.Visit(Statement.LocalFunction statement)
         {
             var parentScope = scope;
-                        
+
+            var localExpr = scope.AddLocal(statement.Name.Identifiers.Last());
             try
             {
                 //We create a new scope here which represents the "up scope", basically
                 //a store for our function's up values
                 //scope = LuaScope.CreateFunctionChildFrom(scope);
 
-                var localExpr = scope.AddLocal(statement.Name.Identifiers.Last());
                 var bodyExpr = Visit(statement.Name, statement.Body);
 
                 return LuaExpr.SourceSpan(_document, statement.Span,
@@ -594,14 +594,40 @@ namespace IronLua.Compiler
 
             var scopeGlobals = scope.GetDlrGlobals();
 
-            return Expr.Block(
+            //We can assume that base libraries are static here, for a runtime boost in performance
+            //Basically, if we only access the libraries table each time instead of checking if the global
+            //table has the library name, we can shift 3 expensive operations into 1 (+1 compile time one).
+            //DOWNSIDE: If you redefine a library's name (e.g. os = null) it will have no effect (unless we
+            //          implement a way of allowing you to change global library definitions, which we will need
+            //          to reset at the begining of each run).
+
+            if(context.IsLibraryIdentifier(identifier))
+                return Expr.Block(
                     typeof(object),
-                    scope.AllLocals().Add(temp).Add(target),
+                    scope.AllLocals().Add(temp),
                     Expr.Assign(temp, Expr.Constant(null)),
-                    Expr.Assign(target, Expr.Condition(Expr.Equal(makeVariableAccess(scopeGlobals), Expr.Constant(null)), libraries, scopeGlobals, typeof(IDynamicMetaObjectProvider))),
-                    Expr.TryCatch(makeVariableAccess(target),
+                    Expr.TryCatch(makeVariableAccess(libraries),
                                     Expr.Catch(ex, Expr.Block(CodeContext.OnExceptionThrown(context, ex), Expr.Constant(null)))),
                     temp);
+            else
+                return Expr.Block(
+                    typeof(object),
+                    scope.AllLocals().Add(temp),
+                    Expr.Assign(temp, Expr.Constant(null)),
+                    Expr.TryCatch(makeVariableAccess(scopeGlobals),
+                                    Expr.Catch(ex, Expr.Block(CodeContext.OnExceptionThrown(context, ex), Expr.Constant(null)))),
+                    temp);
+
+            //Does runtime checking for where we should grab an identifier from, SLOW
+
+            //return Expr.Block(
+            //        typeof(object),
+            //        scope.AllLocals().Add(temp).Add(target),
+            //        Expr.Assign(temp, Expr.Constant(null)),
+            //        Expr.Assign(target, Expr.Condition(Expr.Equal(makeVariableAccess(scopeGlobals), Expr.Constant(null)), libraries, scopeGlobals, typeof(IDynamicMetaObjectProvider))),
+            //        Expr.TryCatch(makeVariableAccess(target),
+            //                        Expr.Catch(ex, Expr.Block(CodeContext.OnExceptionThrown(context, ex), Expr.Constant(null)))),
+            //        temp);
 
             
         }

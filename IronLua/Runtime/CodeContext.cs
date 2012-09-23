@@ -491,6 +491,11 @@ namespace IronLua.Runtime
         //In the case of packages loaded with "require" this just stores the table returned from that call, which should represent the library
         private readonly Dictionary<string, IDictionary<string, object>> _LoadedPackages = new Dictionary<string, IDictionary<string, object>>();
 
+        internal bool IsLibraryIdentifier(string identifier)
+        {
+            return Language.IsBaseLibrary(identifier) || _Libraries.HasValue(identifier);
+        }
+
         private void LoadStandardLibraries()
         {
             //We want to load our base libraries into Lua so that the user doesn't need
