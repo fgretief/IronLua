@@ -57,6 +57,8 @@ namespace IronLua.Runtime
 
         #region LuaTable Methods
 
+        private KeyValuePair<object, int>? LastIndex = null;
+
         internal Varargs Next(object index = null)
         {
             if (index == null)
@@ -89,6 +91,19 @@ namespace IronLua.Runtime
                 return null;
             }
 
+
+            //Update existing value
+
+            //  - last used index
+
+            if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key))
+            {
+                entries[LastIndex.Value.Value].Value = value;
+                return value;
+            }
+
+            //  - Lookup index
+
             var hashCode = key.GetHashCode() & Int32.MaxValue;
             var modHashCode = hashCode % buckets.Length;
 
@@ -99,9 +114,12 @@ namespace IronLua.Runtime
                     if (entries[i].Locked)
                         throw LuaRuntimeException.Create(Context, "Cannot change the value of the constant {0}", key);
                     entries[i].Value = value;
+                    LastIndex = new KeyValuePair<object, int>(key, i);
                     return value;
                 }
             }
+
+            //Add new value
 
             int free;
             if (freeCount > 0)
@@ -126,6 +144,7 @@ namespace IronLua.Runtime
             entries[free].Key = key;
             entries[free].Value = value;
             buckets[modHashCode] = free;
+            LastIndex = new KeyValuePair<object, int>(key, free);
             return value;
         }
 
@@ -139,6 +158,7 @@ namespace IronLua.Runtime
                 Remove(key);
                 return null;
             }
+
 
             var hashCode = key.GetHashCode() & Int32.MaxValue;
             var modHashCode = hashCode % buckets.Length;
@@ -183,33 +203,55 @@ namespace IronLua.Runtime
             entries[free].Value = value;
             entries[free].Locked = true;
             buckets[modHashCode] = free;
+            LastIndex = new KeyValuePair<object, int>(key, free);
             return value;
         }
 
         internal object GetValue(object key)
         {
-            if (key == null)
-                return null;
+            if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key))
+                return entries[LastIndex.Value.Value].Value;
 
             var pos = FindEntry(key);
             return pos < 0 ? null : entries[pos].Value;
         }
 
         internal bool HasValue(object key)
-        {
-            if (key == null)
-                return false;
-
-
+        {            
             var pos = FindEntry(key);
             return pos >= 0;
         }
 
         public void Remove(object key)
         {
+            if (key == null)
+                return;
+
+            //We may be able to improve this, only setting it to null when we clear
+            //the current key or when we resize the collection.
+            LastIndex = null;
+
             var hashCode = key.GetHashCode() & Int32.MaxValue;
             var modHashCode = hashCode % buckets.Length;
             var last = -1;
+
+            if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key))
+            {
+                int i = LastIndex.Value.Value;
+                if (last < 0)
+                    buckets[modHashCode] = entries[i].Next;
+                else
+                    entries[last].Next = entries[i].Next;
+
+                entries[i].HashCode = -1;
+                entries[i].Next = freeList;
+                entries[i].Key = null;
+                entries[i].Value = null;
+                freeList = i;
+                freeCount++;
+                return;
+            }
+
 
             for (var i = buckets[modHashCode]; i >= 0; i = entries[i].Next)
             {
@@ -234,6 +276,9 @@ namespace IronLua.Runtime
 
         int FindEntry(object key)
         {
+            if (key == null)
+                return -1;
+
             var hashCode = key.GetHashCode() & Int32.MaxValue;
             var modHashCode = hashCode % buckets.Length;
 
