@@ -28,8 +28,11 @@ namespace IronLua.Runtime
         public CodeContext Context
         { get; set; }
 
+        protected readonly LuaTable Parent = null;
+        protected readonly bool ReadOnlyParent = true;
+
         public LuaTable()
-            : this(null)
+            : this(context: null)
         {
 
         }
@@ -46,6 +49,12 @@ namespace IronLua.Runtime
 
             entries = new Entry[prime];
             freeList = -1;
+        }
+
+        public LuaTable(LuaTable parentTable)
+            : this(parentTable.Context)
+        {
+            Parent = parentTable;
         }
 
         public LuaTable Metatable { get; set; }
@@ -96,7 +105,7 @@ namespace IronLua.Runtime
 
             //  - last used index
 
-            if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key))
+            if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key) && LastIndex.Value.Value >= 0)
             {
                 entries[LastIndex.Value.Value].Value = value;
                 return value;
@@ -210,26 +219,22 @@ namespace IronLua.Runtime
         internal object GetValue(object key)
         {
             if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key))
-                return entries[LastIndex.Value.Value].Value;
+                return Entry(LastIndex.Value.Value).Value.Value;
 
             var pos = FindEntry(key);
-            return pos < 0 ? null : entries[pos].Value;
+            return Entry(pos).Value.Value;
         }
 
         internal bool HasValue(object key)
         {            
             var pos = FindEntry(key);
-            return pos >= 0;
+            return pos != -1;
         }
 
         public void Remove(object key)
         {
             if (key == null)
                 return;
-
-            //We may be able to improve this, only setting it to null when we clear
-            //the current key or when we resize the collection.
-            LastIndex = null;
 
             var hashCode = key.GetHashCode() & Int32.MaxValue;
             var modHashCode = hashCode % buckets.Length;
@@ -249,6 +254,8 @@ namespace IronLua.Runtime
                 entries[i].Value = null;
                 freeList = i;
                 freeCount++;
+
+                LastIndex = null;
                 return;
             }
 
@@ -272,6 +279,21 @@ namespace IronLua.Runtime
                 }
                 last = i;
             }
+
+            if (ReadOnlyParent)
+                return;
+
+            Parent.Remove(key);
+        }
+
+        private Entry? Entry(int index)
+        {
+            if (index == -1)
+                return null;
+            else if (index < 0)
+                return entries[index - Int32.MinValue];
+            else
+                return entries[index];
         }
 
         int FindEntry(object key)
@@ -287,6 +309,10 @@ namespace IronLua.Runtime
                 if (entries[i].HashCode == hashCode && entries[i].Key.Equals(key))
                     return i;
             }
+
+            int parent = Parent.FindEntry(key);
+            if (parent != -1)
+                return Int32.MinValue + parent;
 
             return -1;
         }
