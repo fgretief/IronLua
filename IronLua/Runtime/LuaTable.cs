@@ -17,7 +17,7 @@ namespace IronLua.Runtime
 #if DEBUG
     [DebuggerTypeProxy(typeof(LuaTableDebugView))]
 #endif
-    class LuaTable : IDynamicMetaObjectProvider, IDictionary<string,object>, IDictionary<object,object>
+    public class LuaTable : IDynamicMetaObjectProvider, IDictionary<string,object>, IDictionary<object,object>
     {
         int[] buckets;
         Entry[] entries;
@@ -66,9 +66,9 @@ namespace IronLua.Runtime
 
         #region LuaTable Methods
 
-        private KeyValuePair<object, int>? LastIndex = null;
+        protected KeyValuePair<object, int>? LastIndex = null;
 
-        internal Varargs Next(object index = null)
+        internal virtual Varargs Next(object index = null)
         {
             if (index == null)
             {
@@ -89,7 +89,7 @@ namespace IronLua.Runtime
             return null;
         }
 
-        internal object SetValue(object key, object value)
+        internal virtual object SetValue(object key, object value)
         {
             if (key == null)
                 return null;
@@ -157,7 +157,7 @@ namespace IronLua.Runtime
             return value;
         }
 
-        internal object SetConstant(object key, object value)
+        internal virtual object SetConstant(object key, object value)
         {
             if (key == null)
                 return null;
@@ -216,16 +216,24 @@ namespace IronLua.Runtime
             return value;
         }
 
-        internal object GetValue(object key)
+        internal virtual object GetValue(object key)
         {
+            Entry? entry;
             if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key))
-                return Entry(LastIndex.Value.Value).Value.Value;
+            {
+                entry = Entry(LastIndex.Value.Value);
+                if (entry.HasValue)
+                    return entry.Value.Value;
+            }
 
             var pos = FindEntry(key);
-            return Entry(pos).Value.Value;
+            entry = Entry(pos);
+            if (entry.HasValue)
+                return entry.Value.Value;
+            return null;
         }
 
-        internal bool HasValue(object key)
+        internal virtual bool HasValue(object key)
         {            
             var pos = FindEntry(key);
             return pos != -1;
@@ -286,17 +294,19 @@ namespace IronLua.Runtime
             Parent.Remove(key);
         }
 
-        private Entry? Entry(int index)
+        protected virtual Entry? Entry(int index)
         {
             if (index == -1)
                 return null;
-            else if (index < 0)
-                return entries[index - Int32.MinValue];
-            else
+            else if (index >= 0)
                 return entries[index];
+            else if (index < 0 && Parent != null)
+                return Parent.entries[index - Int32.MinValue];
+            else
+                return null;
         }
 
-        int FindEntry(object key)
+        protected virtual int FindEntry(object key)
         {
             if (key == null)
                 return -1;
@@ -310,6 +320,9 @@ namespace IronLua.Runtime
                     return i;
             }
 
+            if (Parent == null)
+                return -1;
+
             int parent = Parent.FindEntry(key);
             if (parent != -1)
                 return Int32.MinValue + parent;
@@ -317,7 +330,7 @@ namespace IronLua.Runtime
             return -1;
         }
 
-        void Resize()
+        protected void Resize()
         {
             var prime = HashHelpers.GetPrime(count * 2);
 
@@ -342,7 +355,7 @@ namespace IronLua.Runtime
         /// Gets the total number of sequentially indexed values in the table (ignoring non-integer keys)
         /// </summary>
         /// <returns>Returns the number of sequentially indexed values in the table</returns>
-        internal int Length()
+        internal virtual int Length()
         {
             var lastNum = 0;
             foreach (var key in entries.Select(e => e.Key).OfType<double>().OrderBy(key => key))
@@ -362,7 +375,7 @@ namespace IronLua.Runtime
         /// <summary>
         /// Gets the total number of elements in the table
         /// </summary>
-        internal int Count()
+        internal virtual int Count()
         {
             return entries.Count(x => x.Key != null);
         }
