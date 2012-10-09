@@ -4,6 +4,7 @@ using System.Dynamic;
 using System.Linq.Expressions;
 using Microsoft.Scripting;
 using Microsoft.Scripting.Runtime;
+using IronLua.Hosting;
 
 namespace IronLua.Runtime
 {
@@ -17,20 +18,41 @@ namespace IronLua.Runtime
     {
         private readonly Expression<Func<IDynamicMetaObjectProvider, dynamic>> _exprLambda;
         private Func<IDynamicMetaObjectProvider, dynamic> _compiledLambda;
+        private readonly CodeContext Context;
 
-        public LuaScriptCode(SourceUnit sourceUnit, Expression<Func<IDynamicMetaObjectProvider, dynamic>> chunk)
+        public LuaScriptCode(CodeContext context, SourceUnit sourceUnit, Expression<Func<IDynamicMetaObjectProvider, dynamic>> chunk)
             : base(sourceUnit)
         {
             Contract.Requires(chunk != null);
+            Context = context;
             _exprLambda = chunk;
+        }
+
+        public override Scope CreateScope()
+        {
+            return new Scope(new LuaTable(Context) as IDynamicMetaObjectProvider);
         }
 
         public override object Run(Scope scope)
         {
             if (_compiledLambda == null)
                 _compiledLambda = _exprLambda.Compile();
-
-            return _compiledLambda(scope);
+            try
+            {
+                return _compiledLambda(scope);
+            }
+            catch (LuaRuntimeException lrex) //BOOOOBS
+            {
+                throw;
+            }
+            catch (MissingMemberException mmex)
+            {
+                throw LuaRuntimeException.Create(Context, "could not find the variable '" + mmex.Message + "'", mmex);
+            }
+            catch (Exception ex)
+            {
+                throw LuaRuntimeException.Create(Context, ex.Message, ex);
+            }
         }
     }
 }

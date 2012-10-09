@@ -20,30 +20,45 @@ print("Attempting to create an array: Int32[10]")
 array = clr.makearray(system.int, 10)
 assert(array,'Failed to create array')
 assert(#array == 10,'Array length was not correct')
-print('Array created, testing access')
+print('    Success')
+print('Testing array access')
 array[0]=10
 print("array[0] = ",array[0])
 assert(array[0] == system.convert.ToInt32(10),'Array value was not set correctly')
 assert(array[0] == 10,'Implicit conversion between Int32 and double failed')
+print('    Success')
 
+print('Testing Array Itteration')
 for i=1,#array - 1 do
 	array[i] = 10 - i
 end
 
-for i = 1, #array - 1 do
-	assert(array[i] == 10 - i, 'Filling of array failed')
-	print('array['..i..'] = ', array[i])
+for v in clr.iterate(array) do
+	if not iterated then 
+		iterated = v
+	else
+		iterated = iterated..','..v
+	end
 end
+assert(iterated == '10,9,8,7,6,5,4,3,2,1', 'Array itteration failed, got '..iterated)
+print('    Success')
 
 print('Attempting to import List<string>')
 system.string = clr.import('System.String')
 assert(system.string,'Failed to import System.String')
 system.list_string = clr.import('System.Collections.Generic.List`1[System.String]')
 assert(system.list_string, 'Failed to import System.Collections.Generic.List<string>')
-print('List<string> imported successfully')
+print('    Success')
 
 print([[Testing List<string> access]])
 list = system.list_string()
 assert(list,'Failed to instantiate List<string>')
 list.Add('This is a test string')
 assert(list[0] == 'This is a test string','Failed to retreive value from list')
+print('    Success')
+
+print"Testing List<string> itteration"
+for i=1,10 do list.Add("This is a test string") end
+
+for v in clr.iterate(list) do assert(v == 'This is a test string', 'List value was incorrect') end
+print('    Success')

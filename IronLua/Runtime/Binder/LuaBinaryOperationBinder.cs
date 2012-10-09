@@ -32,9 +32,9 @@ namespace IronLua.Runtime.Binder
                     {ExprType.Power,              BinaryOpType.Numeric}
                 };
 
-        readonly LuaContext context;
+        readonly CodeContext context;
 
-        public LuaBinaryOperationBinder(LuaContext context, ExprType op)
+        public LuaBinaryOperationBinder(CodeContext context, ExprType op)
             : base(op)
         {
             ContractUtils.RequiresNotNull(context, "context");
@@ -76,7 +76,7 @@ namespace IronLua.Runtime.Binder
                          
                         if(mo == null || mo.Expression.Type == typeof(void))
                         {
-                            var ex = new LuaRuntimeException(context, "attempt to compare {0} with {1}", 
+                            var ex = LuaRuntimeException.Create(context, "attempt to compare {0} with {1}", 
                                 IronLua.Library.BaseLibrary.TypeName(left.LimitType),
                                 IronLua.Library.BaseLibrary.TypeName(right.LimitType));
                             mo =  new DynamicMetaObject(Expr.Throw(Expr.Constant(ex), typeof(LuaRuntimeException)), BindingRestrictions.Empty, ex);
@@ -99,7 +99,8 @@ namespace IronLua.Runtime.Binder
             }
 
             if (expression == null)
-                expression = MetamethodFallbacks.BinaryOp(context, Operation, target, arg);
+                expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.BinaryOp(context, Operation, target, arg), context,
+                    new FunctionStack(context, null, null, LuaOps.GetMethodName(Operation)));
 
             return new DynamicMetaObject(Expr.Convert(expression, typeof(object)), 
                 RuntimeHelpers.MergeTypeRestrictions(target, arg));
@@ -188,12 +189,14 @@ namespace IronLua.Runtime.Binder
 
             var expr = Expr.Condition(
                 Expr.Invoke(Expr.Constant((Func<double, bool>)Double.IsNaN), conversionVar),
+                MetamethodFallbacks.WrapStackTrace(
                 Expr.Invoke(
-                    Expr.Constant((Func<LuaContext, ExprType, object, object, object>)LuaOps.NumericMetamethod),
+                    Expr.Constant((Func<CodeContext, ExprType, object, object, object>)LuaOps.NumericMetamethod),
                     Expr.Constant(context),
                     Expr.Constant(Operation),
                     Expr.Convert(left.Expression, typeof(object)),
-                    Expr.Convert(right.Expression, typeof(object))),
+                    Expr.Convert(right.Expression, typeof(object))), context,
+                    new FunctionStack(context, null, null, LuaOps.GetMethodName(Operation))),
                 Expr.Convert(conversionVar, typeof(object)));
 
             return Expr.Block(

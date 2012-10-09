@@ -17,7 +17,9 @@ namespace IronLua.Tests
         {
             get
             {
-                var temp = Environment.CurrentDirectory.Split('\\').Reverse().Skip(3).Reverse();
+                //return Environment.CurrentDirectory;
+
+                var temp = Environment.CurrentDirectory.Split('\\').Reverse().Skip(2).Reverse();
                 string o = "";
                 foreach (var t in temp)
                     o += t + "\\";
@@ -108,6 +110,11 @@ namespace IronLua.Tests
             try
             {
                 return action(engine);
+            }
+            catch(Exception ex)
+            {
+                ex.ToString();
+                return null;
             }
             finally
             {

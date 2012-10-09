@@ -12,14 +12,15 @@ using IronLua.Util;
 using Microsoft.Scripting.Utils;
 using Expr = System.Linq.Expressions.Expression;
 using Microsoft.Scripting.Actions;
+using IronLua.Compiler.Expressions;
 
 namespace IronLua.Runtime.Binder
 {
     class LuaInvokeBinder : InvokeBinder
     {
-        readonly LuaContext context;
+        readonly CodeContext context;
 
-        public LuaInvokeBinder(LuaContext context, CallInfo callInfo)
+        public LuaInvokeBinder(CodeContext context, CallInfo callInfo)
             : base(callInfo)
         {
             ContractUtils.RequiresNotNull(context, "context");
@@ -34,10 +35,12 @@ namespace IronLua.Runtime.Binder
             var restrictions = RuntimeHelpers.MergeTypeRestrictions(target);
 
             if (target.Value == null)
-                throw new LuaRuntimeException(context, "Attempt to invoke a nil object");
+                throw LuaRuntimeException.Create(context, "Attempt to invoke a nil object (" + context.CurrentVariableIdentifier + ")");
 
             if (!target.LimitType.IsSubclassOf(typeof(Delegate)) && target.LimitType != typeof(Varargs))
-                return new DynamicMetaObject(MetamethodFallbacks.Call(context, target, args), restrictions);
+                return new DynamicMetaObject(
+                    MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.Call(context, target, args), context,
+                    new FunctionStack(context.CurrentVariableIdentifier + "." + Constant.CALL_METAMETHOD)), restrictions);
             
 
 
@@ -117,11 +120,7 @@ namespace IronLua.Runtime.Binder
                 expr = Expr.Convert(invokeExpr, typeof(object));
 
             var tempVar = Expr.Variable(typeof(object), "$function_result$");
-            return Expr.Block(new [] {tempVar},
-                LuaTrace.MakePushFunctionCall(context, new LuaTrace.FunctionCall(context.Trace.CurrentSpan, LuaTrace.FunctionType.CLR, BaseLibrary.ToStringEx(target.Value))),
-                Expr.Assign(tempVar, expr),
-                LuaTrace.MakePopFunctionCall(context),
-                tempVar);
+            return Expr.Block(new [] {tempVar}, LuaExpressions.FunctionScope(context, null, null, new[] { context.CurrentVariableIdentifier }, Expr.Assign(tempVar, expr)));
         }
 
         IEnumerable<Expr> MapArguments(DynamicMetaObject[] args, MethodInfo methodInfo, ref BindingRestrictions restrictions, out List<Expr> sideEffects, out Expr failExpr)
@@ -277,15 +276,26 @@ namespace IronLua.Runtime.Binder
                                 Expr.Constant((Func<object, string>)BaseLibrary.Type),
                                 Expr.Convert(obj, typeof(object)));
 
+                        Expr got = null;
+                        try
+                        {
+                            got = typeNameExpr(Expr.Constant(Activator.CreateInstance(param.ParameterType)));
+                        }
+                        catch
+                        {
+                            got = Expr.Constant(param.ParameterType.FullName);
+                        }
+
                         // Ugly reflection hack
                         failExpr = Expr.Throw(
                             Expr.New(
                                 MemberInfos.NewRuntimeException,
+                                Expr.Constant(context),
                                 Expr.Constant(ExceptionMessage.INVOKE_BAD_ARGUMENT_GOT),
                                 Expr.NewArrayInit(
                                     typeof(object),
                                     Expr.Constant(i + 1, typeof(object)),
-                                    typeNameExpr(Expr.Constant(Activator.CreateInstance(param.ParameterType))),
+                                    got,
                                     typeNameExpr(arg.Expression))));
                         break;
                     }

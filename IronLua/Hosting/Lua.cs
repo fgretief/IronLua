@@ -4,6 +4,8 @@ using IronLua.Runtime;
 using Microsoft.Scripting.Hosting;
 using Microsoft.Scripting.Hosting.Providers;
 using Microsoft.Scripting.Utils;
+using Microsoft.Scripting.Runtime;
+using Microsoft.Scripting;
 
 namespace IronLua.Hosting
 {
@@ -110,6 +112,19 @@ namespace IronLua.Hosting
         public static LuaContext GetLuaContext(this ScriptEngine engine)
         {
             return HostingHelpers.GetLanguageContext(engine) as LuaContext;
+        }
+
+        /// <summary>
+        /// Compiles the given code into a <see cref="ScriptCode"/> object which may
+        /// be executed multiple times on different scopes without needing to recompile itself.
+        /// </summary>
+        /// <param name="engine">The engine for which this code will be compiled</param>
+        /// <param name="code">The source code which should be compiled</param>
+        public static ScriptCode Compile(this ScriptEngine engine, string code)
+        {
+            var context = HostingHelpers.GetLanguageContext(engine);
+            var sourceUnit = context.CreateSnippet(code, "(compile)", SourceCodeKind.Statements);
+            return context.CompileSourceCode(sourceUnit, engine.GetCompilerOptions(), context.GetCompilerErrorSink());
         }
     }
 }

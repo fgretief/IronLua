@@ -2,6 +2,7 @@
 using IronLua.Hosting;
 using IronLua.Runtime;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 
 namespace IronLua.Tests
 {
@@ -71,14 +72,11 @@ namespace IronLua.Tests
             dynamic t = Lua.CreateEngine().Execute("return { 5, 10, 15, A = 'alpha', ['B'] = 'beta' }");
 
             Assert.That(t, Is.TypeOf<LuaTable>());
-            Assert.That(t.A, Is.EqualTo("alpha"));
-            Assert.That(t.B, Is.EqualTo("beta"));
-
-            // broken
-            //Assert.That(t[1], Is.EqualTo(5));
-            //Assert.That(t[2], Is.EqualTo(10));
-            //Assert.That(t[3], Is.EqualTo(15));
-            //Assert.That(t["B"], Is.EqualTo("beta"));
+            Assert.That(t[1.0], Is.EqualTo(5));
+            Assert.That(t[2.0], Is.EqualTo(10));
+            Assert.That(t[3.0], Is.EqualTo(15));
+            Assert.That(t["A"], Is.EqualTo("alpha"));
+            Assert.That(t["B"], Is.EqualTo("beta"));
         }
 
         [Test]
@@ -126,7 +124,7 @@ namespace IronLua.Tests
             var scope = engine.CreateScope();
 
             scope.SetVariable("a", 42);
-            //engine.Execute("assert(a == 42)");
+            engine.Execute("assert(a == 42)", scope);
             object la = engine.Execute("return a", scope); 
             Assert.That(la, Is.EqualTo(42));
         }

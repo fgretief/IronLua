@@ -7,14 +7,15 @@ using Microsoft.Scripting.Runtime;
 using IronLua.Library;
 using System;
 using System.Linq;
+using Expr = System.Linq.Expressions.Expression;
 
 namespace IronLua.Runtime.Binder
 {
     class LuaBinder : DefaultBinder
     {
-        private readonly LuaContext _context;
+        private readonly CodeContext _context;
 
-        public LuaBinder(LuaContext context)
+        public LuaBinder(CodeContext context)
         {
             Contract.Requires(context != null);
             _context = context;
@@ -41,7 +42,7 @@ namespace IronLua.Runtime.Binder
         public override object Convert(object obj, System.Type toType)
         {
             if (obj is double && toType == typeof(string))
-                return BaseLibrary.ToStringEx(obj);
+                return BaseLibrary.ToString(_context, obj);
 
             else if (obj is string && toType == typeof(double))
                 return BaseLibrary.ToNumber(_context, obj, 10.0);
@@ -50,6 +51,33 @@ namespace IronLua.Runtime.Binder
                 return System.Convert.ChangeType(obj, toType);
 
             return base.Convert(obj, toType);
+        }
+
+        public override ErrorInfo MakeEventValidation(MemberGroup members, DynamicMetaObject eventObject, DynamicMetaObject value, OverloadResolverFactory resolverFactory)
+        {
+            return base.MakeEventValidation(members, eventObject, value, resolverFactory);
+        }
+
+        public override ErrorInfo MakeMissingMemberErrorInfo(Type type, string name)
+        {
+            var inner = base.MakeMissingMemberErrorInfo(type, name);
+
+            return ErrorInfo.FromException(ThrowRuntimeError("could not find the field, index, method or property '" + name + "' on '" + type.FullName + "'", inner));
+        }
+
+        public override string GetTypeName(Type t)
+        {
+            return BaseLibrary.TypeName(t);
+        }
+
+        private Expr ThrowRuntimeError(string format, params object[] args)
+        {
+            return Expr.New(MemberInfos.NewRuntimeException, Expr.Constant(_context), Expr.Constant(format), Expr.Constant(args));
+        }
+
+        private Expr ThrowRuntimeError(string format, Expr innerEx)
+        {
+            return Expr.New(MemberInfos.NewRuntimeException, Expr.Constant(_context), Expr.Constant(format), innerEx);
         }
     }
 

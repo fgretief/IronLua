@@ -441,7 +441,7 @@ namespace IronLua.Tests.Features
             Assert.That(Run("return 6 <= 6"), Is.True);
         }
 
-        [Test, ExpectedException(typeof(LuaRuntimeException), 
+        [Test, ExpectedException(typeof(LuaRuntimeException),
             ExpectedMessage = "attempt to compare nil with number")]
         public void TestBinary_LessThan_NilWithNumber()
         {

@@ -11,7 +11,7 @@ namespace IronLua
             typeof(Varargs).GetConstructor(new[] {typeof(object[])});
 
         public static readonly ConstructorInfo NewLuaTable =
-            typeof(LuaTable).GetConstructor(new Type[] { typeof(LuaContext) });
+            typeof(LuaTable).GetConstructor(new Type[] { typeof(CodeContext) });
 
         public static readonly MethodInfo LuaTableSetValue =
             typeof(LuaTable).GetMethod("SetValue", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -25,8 +25,7 @@ namespace IronLua
         public static readonly MethodInfo ObjectToString =
             typeof(object).GetMethod("ToString");
 
-        public static readonly ConstructorInfo NewRuntimeException =
-            typeof(LuaRuntimeException).GetConstructor(new[] { typeof(LuaContext), typeof(string), typeof(object[]) });
+        public static readonly ConstructorInfo NewRuntimeException = LuaRuntimeException.Constructor2;
 
         public static readonly FieldInfo LuaTableMetatable =
             typeof(LuaTable).GetField("Metatable");

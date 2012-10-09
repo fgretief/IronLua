@@ -8,13 +8,16 @@ using IronLua.Util;
 using Expr = System.Linq.Expressions.Expression;
 using ExprType = System.Linq.Expressions.ExpressionType;
 using IronLua.Hosting;
+using System.Collections.ObjectModel;
+using System.Collections;
+using IronLua.Library;
 
 namespace IronLua.Runtime
 {
 #if DEBUG
     [DebuggerTypeProxy(typeof(LuaTableDebugView))]
 #endif
-    class LuaTable : IDynamicMetaObjectProvider
+    public class LuaTable : IDynamicMetaObjectProvider, IDictionary<string,object>, IDictionary<object,object>
     {
         int[] buckets;
         Entry[] entries;
@@ -22,17 +25,19 @@ namespace IronLua.Runtime
         int freeCount;
         int count;
 
-        LuaContext Context
+        public CodeContext Context
         { get; set; }
 
-        [Obsolete("This constructor is not safe when making use of metatables and metamethods")]
+        protected readonly LuaTable Parent = null;
+        protected readonly bool ReadOnlyParent = true;
+
         public LuaTable()
-            : this(null)
+            : this(context: null)
         {
 
         }
 
-        public LuaTable(LuaContext context)
+        public LuaTable(CodeContext context)
         {
             Context = context;
 
@@ -46,14 +51,24 @@ namespace IronLua.Runtime
             freeList = -1;
         }
 
+        public LuaTable(LuaTable parentTable)
+            : this(parentTable.Context)
+        {
+            Parent = parentTable;
+        }
+
         public LuaTable Metatable { get; set; }
 
         public DynamicMetaObject GetMetaObject(Expr parameter)
         {
-            return new MetaTable(Context, parameter, BindingRestrictions.Empty, this);
+            return new MetaTable(parameter, BindingRestrictions.Empty, this);
         }
 
-        internal Varargs Next(object index = null)
+        #region LuaTable Methods
+
+        protected KeyValuePair<object, int>? LastIndex = null;
+
+        internal virtual Varargs Next(object index = null)
         {
             if (index == null)
             {
@@ -74,13 +89,29 @@ namespace IronLua.Runtime
             return null;
         }
 
-        internal object SetValue(object key, object value)
+        internal virtual object SetValue(object key, object value)
         {
+            if (key == null)
+                return null;
+
             if (value == null)
             {
                 Remove(key);
                 return null;
             }
+
+
+            //Update existing value
+
+            //  - last used index
+
+            if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key) && LastIndex.Value.Value >= 0)
+            {
+                entries[LastIndex.Value.Value].Value = value;
+                return value;
+            }
+
+            //  - Lookup index
 
             var hashCode = key.GetHashCode() & Int32.MaxValue;
             var modHashCode = hashCode % buckets.Length;
@@ -90,11 +121,14 @@ namespace IronLua.Runtime
                 if (entries[i].HashCode == hashCode && entries[i].Key.Equals(key))
                 {
                     if (entries[i].Locked)
-                        throw new LuaRuntimeException(Context, "Cannot change the value of the constant {0}", key);
+                        throw LuaRuntimeException.Create(Context, "Cannot change the value of the constant {0}", key);
                     entries[i].Value = value;
+                    LastIndex = new KeyValuePair<object, int>(key, i);
                     return value;
                 }
             }
+
+            //Add new value
 
             int free;
             if (freeCount > 0)
@@ -119,16 +153,21 @@ namespace IronLua.Runtime
             entries[free].Key = key;
             entries[free].Value = value;
             buckets[modHashCode] = free;
+            LastIndex = new KeyValuePair<object, int>(key, free);
             return value;
         }
 
-        internal object SetConstant(object key, object value)
+        internal virtual object SetConstant(object key, object value)
         {
+            if (key == null)
+                return null;
+
             if (value == null)
             {
                 Remove(key);
                 return null;
             }
+
 
             var hashCode = key.GetHashCode() & Int32.MaxValue;
             var modHashCode = hashCode % buckets.Length;
@@ -138,7 +177,7 @@ namespace IronLua.Runtime
                 if (entries[i].HashCode == hashCode && entries[i].Key.Equals(key))
                 {
                     if(entries[i].Locked)
-                        throw new LuaRuntimeException(Context, "The constant {0} is already set to {1} and cannot be modified", key, value);
+                        throw LuaRuntimeException.Create(Context, "The constant {0} is already set to {1} and cannot be modified", key, value);
                     else
                     {
                         //TODO: Decide whether or not we should allow a variable to be converted into a constant
@@ -173,26 +212,61 @@ namespace IronLua.Runtime
             entries[free].Value = value;
             entries[free].Locked = true;
             buckets[modHashCode] = free;
+            LastIndex = new KeyValuePair<object, int>(key, free);
             return value;
         }
 
-        internal object GetValue(object key)
+        internal virtual object GetValue(object key)
         {
+            Entry? entry;
+            if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key))
+            {
+                entry = GetEntry(LastIndex.Value.Value);
+                if (entry.HasValue)
+                    return entry.Value.Value;
+            }
+
             var pos = FindEntry(key);
-            return pos < 0 ? null : entries[pos].Value;
+            entry = GetEntry(pos);
+            if (entry.HasValue)
+                return entry.Value.Value;
+            return null;
         }
 
-        internal bool HasValue(object key)
-        {
+        internal virtual bool HasValue(object key)
+        {            
             var pos = FindEntry(key);
-            return pos >= 0;
+            return pos != -1;
         }
 
-        void Remove(object key)
+        public void Remove(object key)
         {
+            if (key == null)
+                return;
+
             var hashCode = key.GetHashCode() & Int32.MaxValue;
             var modHashCode = hashCode % buckets.Length;
             var last = -1;
+
+            if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key))
+            {
+                int i = LastIndex.Value.Value;
+                if (last < 0)
+                    buckets[modHashCode] = entries[i].Next;
+                else
+                    entries[last].Next = entries[i].Next;
+
+                entries[i].HashCode = -1;
+                entries[i].Next = freeList;
+                entries[i].Key = null;
+                entries[i].Value = null;
+                freeList = i;
+                freeCount++;
+
+                LastIndex = null;
+                return;
+            }
+
 
             for (var i = buckets[modHashCode]; i >= 0; i = entries[i].Next)
             {
@@ -213,10 +287,30 @@ namespace IronLua.Runtime
                 }
                 last = i;
             }
+
+            if (ReadOnlyParent)
+                return;
+
+            Parent.Remove(key);
         }
 
-        int FindEntry(object key)
+        protected virtual Entry? GetEntry(int index)
         {
+            if (index == -1)
+                return null;
+            else if (index >= 0)
+                return entries[index];
+            else if (index < 0 && Parent != null)
+                return Parent.entries[index - Int32.MinValue];
+            else
+                return null;
+        }
+
+        protected virtual int FindEntry(object key)
+        {
+            if (key == null)
+                return -1;
+
             var hashCode = key.GetHashCode() & Int32.MaxValue;
             var modHashCode = hashCode % buckets.Length;
 
@@ -226,10 +320,17 @@ namespace IronLua.Runtime
                     return i;
             }
 
+            if (Parent == null)
+                return -1;
+
+            int parent = Parent.FindEntry(key);
+            if (parent != -1)
+                return Int32.MinValue + parent;
+
             return -1;
         }
 
-        void Resize()
+        protected void Resize()
         {
             var prime = HashHelpers.GetPrime(count * 2);
 
@@ -254,7 +355,7 @@ namespace IronLua.Runtime
         /// Gets the total number of sequentially indexed values in the table (ignoring non-integer keys)
         /// </summary>
         /// <returns>Returns the number of sequentially indexed values in the table</returns>
-        internal int Length()
+        internal virtual int Length()
         {
             var lastNum = 0;
             foreach (var key in entries.Select(e => e.Key).OfType<double>().OrderBy(key => key))
@@ -274,12 +375,285 @@ namespace IronLua.Runtime
         /// <summary>
         /// Gets the total number of elements in the table
         /// </summary>
-        internal int Count()
+        internal virtual int Count()
         {
             return entries.Count(x => x.Key != null);
         }
 
-        struct Entry
+        #endregion
+
+        #region IDictionary Methods
+
+        #region Object Keys
+
+        /// <inheritdoc/>
+        public void Add(object key, object value)
+        {
+            SetValue(key, value);
+        }
+
+        /// <inheritdoc/>
+        public bool ContainsKey(object key)
+        {
+            return HasValue(key);
+        }
+
+        private IEnumerable<object> _keys()
+        {
+            Varargs current = null;
+            while ((current = Next(current)) != null)
+                yield return current.First();
+        }
+
+        /// <inheritdoc/>
+        public ICollection<object> Keys
+        {
+            get 
+            {
+                return new ReadOnlyCollection<object>(_keys().ToList());                
+            }
+        }
+
+        /// <inheritdoc/>
+        bool IDictionary<object, object>.Remove(object key)
+        {
+            return SetValue(key, null) == null;
+        }
+
+        /// <inheritdoc/>
+        public bool TryGetValue(object key, out object value)
+        {
+            value = GetValue(key);
+            return value != null;
+        }
+
+        private IEnumerable<object> _values()
+        {
+            Varargs current = null;
+            while ((current = Next(current)) != null)
+                yield return current.Last();
+        }
+
+        /// <inheritdoc/>
+        public ICollection<object> Values
+        {
+            get { return new ReadOnlyCollection<object>(_values().ToList()); }
+        }
+
+        /// <inheritdoc/>
+        public object this[object key]
+        {
+            get
+            {
+                if (key.GetType() == typeof(int))
+                    return GetValue(Convert.ToDouble(key));
+
+                return GetValue(key);
+            }
+            set
+            {
+                if (key.GetType() == typeof(int))
+                    SetValue(Convert.ToDouble(key), value);
+                else
+                    SetValue(key, value);
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Add(KeyValuePair<object, object> item)
+        {
+            SetValue(item.Key, item.Value);
+        }
+
+        /// <inheritdoc/>
+        public void Clear()
+        {
+            Varargs current = null;
+            while ((current = Next()) != null)
+                Remove(current.First());
+        }
+
+        /// <inheritdoc/>
+        public bool Contains(KeyValuePair<object, object> item)
+        {
+            return (HasValue(item.Key) && GetValue(item.Key).Equals(item.Value)) || (!HasValue(item.Key) && item.Value == null);
+        }
+
+        /// <inheritdoc/>
+        public void CopyTo(KeyValuePair<object, object>[] array, int arrayIndex)
+        {
+            Varargs current = null;
+            while ((current = Next(current)) != null)
+                array[arrayIndex++] = new KeyValuePair<object, object>(current.First(), current.Last());
+        }
+
+        /// <inheritdoc/>
+        int ICollection<KeyValuePair<object, object>>.Count
+        {
+            get { return Count(); }
+        }
+
+        /// <inheritdoc/>
+        public bool IsReadOnly
+        {
+            get { return false; }
+        }
+
+        /// <inheritdoc/>
+        public bool Remove(KeyValuePair<object, object> item)
+        {
+            if (HasValue(item.Key) && GetValue(item.Key).Equals(item.Value))
+            {
+                Remove(item.Key);
+                return true;
+            }
+            return false;
+        }
+
+        /// <inheritdoc/>
+        public IEnumerator<KeyValuePair<object, object>> GetEnumerator()
+        {
+            return new LuaTableEnumerator(this);
+        }
+
+        /// <inheritdoc/>
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return new LuaTableEnumerator(this);            
+        }
+
+        #endregion
+
+        #region String Keys
+
+        /// <inheritdoc/>
+        public void Add(string key, object value)
+        {
+            double temp = 0;
+            if (double.TryParse(key, out temp))
+                SetValue(temp, value);
+            else
+                SetValue(key, value);
+        }
+
+        /// <inheritdoc/>
+        public bool ContainsKey(string key)
+        {
+            double temp = 0;
+            bool hasValue = false;
+            if (double.TryParse(key, out temp))
+                hasValue = HasValue(temp);
+            return hasValue || HasValue(key);
+        }
+
+
+        private IEnumerable<string> _keyss()
+        {
+            Varargs current = null;
+            while ((current = Next(current)) != null)
+                if(current.First() is string)
+                    yield return current.First() as string;
+        }
+
+        /// <inheritdoc/>
+        ICollection<string> IDictionary<string, object>.Keys
+        {
+            get { return new ReadOnlyCollection<string>(_keyss().ToList()); }
+        }
+
+        /// <inheritdoc/>
+        public bool Remove(string key)
+        {
+            double temp = 0;
+            if (double.TryParse(key, out temp))
+            {
+                if (HasValue(temp))
+                {
+                    Remove(temp as object);
+                    return true;
+                }
+            }
+
+            if (HasValue(key))
+            {
+                Remove(key as object);
+                return true;
+            }
+            return false;
+        }
+
+        /// <inheritdoc/>
+        public bool TryGetValue(string key, out object value)
+        {
+            double temp = 0;
+            if (double.TryParse(key, out temp))
+                value = GetValue(temp);
+            else
+                value = GetValue(key);
+            return value != null;
+        }
+
+        /// <inheritdoc/>
+        public object this[string key]
+        {
+            get
+            {
+                object value = null; ;
+                if (TryGetValue(key, out value))
+                    return value;
+                return null;
+            }
+            set
+            {
+                double temp = 0;
+                if (double.TryParse(key, out temp))
+                    SetValue(temp, value);
+                else
+                    SetValue(key, value);
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Add(KeyValuePair<string, object> item)
+        {
+            SetValue(item.Key, item.Value);
+        }
+
+        /// <inheritdoc/>
+        public bool Contains(KeyValuePair<string, object> item)
+        {
+            return HasValue(item.Key);
+        }
+
+        /// <inheritdoc/>
+        public void CopyTo(KeyValuePair<string, object>[] array, int arrayIndex)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        int ICollection<KeyValuePair<string, object>>.Count
+        {
+            get { return Count(); }
+        }
+
+        /// <inheritdoc/>
+        public bool Remove(KeyValuePair<string, object> item)
+        {
+            return Remove(item.Key);
+        }
+
+        /// <inheritdoc/>
+        IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator()
+        {
+            return new LuaTableEnumerator(this);
+        }
+
+        #endregion
+
+        #endregion
+
+        protected struct Entry
         {
             public int HashCode;
             public object Key;
@@ -288,44 +662,121 @@ namespace IronLua.Runtime
             public bool Locked;
         }
 
-        class MetaTable : DynamicMetaObject
+        class LuaTableEnumerator :  IEnumerator, 
+                                    IEnumerator<KeyValuePair<object, object>>, 
+                                    IEnumerator<KeyValuePair<string, object>>, 
+                                    IEnumerator<Varargs>
         {
-            public MetaTable(LuaContext context, Expr expression, BindingRestrictions restrictions, LuaTable value)
-                : base(expression, restrictions, value)
+            private readonly LuaTable Table;
+            private Varargs current;
+            bool hasEnumerated = false;
+
+            internal LuaTableEnumerator(LuaTable table)
             {
-                Context = context;
+                Table = table;
             }
 
-            private LuaContext Context
-            { get; set; }
+            public object Current
+            {
+                get 
+                {
+                    if (!hasEnumerated)
+                        throw new InvalidOperationException("Must call MoveNext before retrieving current value");
+                    return current; 
+                }
+            }
+
+            public bool MoveNext()
+            {
+                hasEnumerated = true;
+                current = Table.Next(current);
+                return current != null;
+            }
+
+            public void Reset()
+            {
+                current = null;
+                hasEnumerated = false;
+            }
+
+            KeyValuePair<object, object> IEnumerator<KeyValuePair<object, object>>.Current
+            {
+                get
+                {
+                    if (!hasEnumerated)
+                        throw new InvalidOperationException("Must call MoveNext before retrieving current value"); 
+                    return new KeyValuePair<object, object>(current.First(), current.Last());
+                }
+            }
+
+            public void Dispose()
+            {
+                
+            }
+
+            Varargs IEnumerator<Varargs>.Current
+            {
+                get
+                {
+                    if (!hasEnumerated)
+                        throw new InvalidOperationException("Must call MoveNext before retrieving current value");
+                    return current;
+                }
+            }
+
+            KeyValuePair<string, object> IEnumerator<KeyValuePair<string, object>>.Current
+            {
+                get
+                {
+                    if (!hasEnumerated)
+                        throw new InvalidOperationException("Must call MoveNext before retrieving current value"); 
+                    return new KeyValuePair<string, object>(
+                        current.First() is string ? current.First() as string : ("<<" + BaseLibrary.ToString(Table.Context, current.First()) + ">>"),
+                        current.Last());
+                }
+            }
+        }
+
+        class MetaTable : DynamicMetaObject
+        {
+            public MetaTable(Expr expression, BindingRestrictions restrictions, LuaTable value)
+                : base(expression, restrictions, value)
+            {
+
+            }
 
             public override DynamicMetaObject BindBinaryOperation(BinaryOperationBinder binder, DynamicMetaObject arg)
             {
                 if (!LuaBinaryOperationBinder.BinaryExprTypes.ContainsKey(binder.Operation))
-                    throw new LuaRuntimeException(Context, "operation {0} not defined for table", binder.Operation.ToString());
+                    return LuaRuntimeException.CreateDMO(Value as LuaTable, "operation {0} not defined for table", binder.Operation.ToString());
 
-                var expression = MetamethodFallbacks.BinaryOp(Context, binder.Operation, this, arg);
+                var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.BinaryOp(Value as LuaTable, binder.Operation, this, arg), Value as LuaTable, 
+                    new FunctionStack(LuaOps.GetMethodName(binder.Operation)));
+
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
             }
 
             public override DynamicMetaObject BindUnaryOperation(UnaryOperationBinder binder)
             {
                 if (binder.Operation != ExprType.Negate)
-                    throw new LuaRuntimeException(Context, "operation {0} not defined for table", binder.Operation.ToString());
+                    return LuaRuntimeException.CreateDMO(Value as LuaTable, "operation {0} not defined for table", binder.Operation.ToString());
 
-                var expression = MetamethodFallbacks.UnaryMinus(Context, this);
+                var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.UnaryMinus(Value as LuaTable, this), Value as LuaTable,
+                    new FunctionStack(LuaOps.GetMethodName(binder.Operation)));
+
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
             }
 
             public override DynamicMetaObject BindInvoke(InvokeBinder binder, DynamicMetaObject[] args)
             {
-                var expression = MetamethodFallbacks.Call(Context, this, args);
+                var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.Call(Value as LuaTable, this, args), Value as LuaTable,
+                    new FunctionStack(Constant.CALL_METAMETHOD));
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
             }
 
             public override DynamicMetaObject BindInvokeMember(InvokeMemberBinder binder, DynamicMetaObject[] args)
             {
-                var expression = Expr.Dynamic(new LuaGetMemberBinder(Context, binder.Name), typeof(object), Expression);
+                var expression = Expr.Dynamic((Value as LuaTable).Context.DynamicCache.GetGetMemberBinder(binder.Name), typeof(object), Expression);
                 return binder.FallbackInvoke(new DynamicMetaObject(expression, Restrictions), args, null);
             }
 
@@ -351,7 +802,12 @@ namespace IronLua.Runtime
                     valueAssign,
                     Expr.Condition(
                         Expr.Equal(valueVar, Expr.Constant(null)),
-                        MetamethodFallbacks.Index(Context, this, new []{ new DynamicMetaObject(Expr.Constant(binder.Name), BindingRestrictions.Empty, binder.Name) }),
+                        
+                        MetamethodFallbacks.WrapStackTrace(
+                            MetamethodFallbacks.Index(Value as LuaTable, this, 
+                                new[] { new DynamicMetaObject(Expr.Constant(binder.Name), BindingRestrictions.Empty, binder.Name) }), 
+                            Value as LuaTable,
+                            new FunctionStack(Constant.INDEX_METAMETHOD)),
                         valueVar));
 
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
@@ -380,7 +836,9 @@ namespace IronLua.Runtime
 
                 var expression = Expr.Condition(
                     Expr.Equal(getValue, Expr.Constant(null)),
-                    MetamethodFallbacks.NewIndex(Context, this, new[] { new DynamicMetaObject(Expr.Constant(binder.Name), BindingRestrictions.Empty, binder.Name) }, value),
+                    MetamethodFallbacks.WrapStackTrace(
+                        MetamethodFallbacks.NewIndex(Value as LuaTable, this, new[] { new DynamicMetaObject(Expr.Constant(binder.Name), BindingRestrictions.Empty, binder.Name) }, value), Value as LuaTable,
+                        new FunctionStack(Constant.INDEX_METAMETHOD)),
                     setValue);
 
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
@@ -401,7 +859,9 @@ namespace IronLua.Runtime
                     valueAssign,
                     Expr.Condition(
                         Expr.Equal(valueVar, Expr.Constant(null)),
-                        MetamethodFallbacks.Index(Context, this, indexes),
+                        MetamethodFallbacks.WrapStackTrace(
+                            MetamethodFallbacks.Index(Value as LuaTable, this, indexes), Value as LuaTable,
+                            new FunctionStack(Constant.INDEX_METAMETHOD)),
                         valueVar));
 
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
@@ -422,10 +882,40 @@ namespace IronLua.Runtime
 
                 var expression = Expr.Condition(
                     Expr.Equal(getValue, Expr.Constant(null)),
-                    MetamethodFallbacks.NewIndex(Context, this, indexes, value),
+                    MetamethodFallbacks.WrapStackTrace(
+                        MetamethodFallbacks.NewIndex(Value as LuaTable, this, indexes, value), Value as LuaTable,
+                        new FunctionStack(Constant.INDEX_METAMETHOD)),
                     setValue);
 
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
+            }
+
+            public override IEnumerable<string> GetDynamicMemberNames()
+            {
+                lock (Value)
+                {
+                    var t = Value as LuaTable;
+                    using (var e = t.GetEnumerator())
+                    {
+                        while (e.MoveNext())
+                        {
+                            if (e.Current.Key is string)
+                                yield return e.Current.Key as string;
+                            else if (e.Current.Key is double)
+                                yield return e.Current.Key.ToString();
+                        }
+                    }
+                }
+            }
+
+            public override DynamicMetaObject BindDeleteMember(DeleteMemberBinder binder)
+            {
+                return BindSetMember((Value as LuaTable).Context.DynamicCache.GetSetMemberBinder(binder.Name), new DynamicMetaObject(Expr.Constant(null), BindingRestrictions.Empty));
+            }
+
+            public override DynamicMetaObject BindDeleteIndex(DeleteIndexBinder binder, DynamicMetaObject[] indexes)
+            {
+                return BindSetIndex((Value as LuaTable).Context.DynamicCache.GetSetIndexBinder(), indexes, new DynamicMetaObject(Expr.Constant(null), BindingRestrictions.Empty));
             }
         }
 
@@ -454,7 +944,7 @@ namespace IronLua.Runtime
             }
 
             [DebuggerBrowsable(DebuggerBrowsableState.Collapsed)]
-            public LuaContext Context
+            public CodeContext Code
             {
                 get
                 {
@@ -468,5 +958,6 @@ namespace IronLua.Runtime
             }
         }
 #endif
+
     }
 }

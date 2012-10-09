@@ -21,7 +21,7 @@ namespace IronLua.Tests.Compiler
         [Test, Explicit]
         public void FirstTest()
         {
-            var luaFile = TestUtils.GetTestPath(@"lua-5.2.0-tests\literals.lua");
+            var luaFile = TestUtils.GetTestPath(@"lua-5.2.1-tests\literals.lua");
 
             var engine = Lua.CreateEngine();
             var context = Lua.GetLuaContext(engine);

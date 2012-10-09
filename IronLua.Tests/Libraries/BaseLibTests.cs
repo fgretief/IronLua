@@ -103,5 +103,20 @@ namespace IronLua.Tests.Libraries
 
             Assert.That(output, Is.EqualTo("1\r\n2\r\n3\r\n"));
         }
+
+        [Test]
+        public void TestXPCall_Success()
+        {
+            string code = @"s,r = xpcall(function() print('Success') return '100s' end, function() end) assert(s) assert(r == '100s')";
+            engine.Execute(code);
+        }
+
+        [Test]
+        public void TestXPCall_Failure()
+        {
+            string code = @"s,r = xpcall(function() error('fail') return 'f' end, function() return '100s' end) assert(not s) assert(r == '100s')";
+            engine.Execute(code);
+        }
+
     }
 }

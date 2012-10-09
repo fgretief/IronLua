@@ -49,11 +49,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Compiler\ExecutionTests.cs" />
+    <Compile Include="Features\LuaTests_FunctionBehaviour.cs" />
+    <Compile Include="Features\LuaTests_Advanced.cs" />
     <Compile Include="Features\LuaTests_Errors.cs" />
     <Compile Include="Features\LuaTests_BinaryOps.cs" />
     <Compile Include="Features\LuaTests_local.cs" />
     <Compile Include="Libraries\BaseLibTests.cs" />
     <Compile Include="Libraries\InteropLibTests.cs" />
+    <Compile Include="Libraries\MathLibTests.cs" />
+    <Compile Include="Performance\Performance_Calls.cs" />
+    <Compile Include="Performance\Performance_LuaTable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="BasicTests.cs" />
     <Compile Include="Compiler\GeneratorTests.cs" />
@@ -76,6 +81,34 @@
     <None Include="Scripts\InteropLibTests.lua" />
     <None Include="Scripts\Lexer01_XXX.lua" />
     <None Include="Scripts\literals.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\all.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\api.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\attrib.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\big.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\bitwise.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\calls.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\checktable.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\closure.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\code.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\constructs.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\coroutine.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\db.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\errors.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\events.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\files.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\gc.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\goto.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\libs\makefile" />
+    <None Include="Scripts\lua-5.2.1-tests\literals.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\locals.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\main.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\math.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\nextvar.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\pm.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\sort.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\strings.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\vararg.lua" />
+    <None Include="Scripts\lua-5.2.1-tests\verybig.lua" />
     <None Include="Scripts\MathLibTests.lua" />
     <None Include="Scripts\OslibTests.lua" />
     <None Include="Scripts\StrLibTests.lua" />
@@ -87,6 +120,17 @@
       <Project>{F166178F-729B-4DB5-8D7C-13C269FB5039}</Project>
       <Name>IronLua</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Scripts\lua-5.2.1-tests\libs\lib1.c" />
+    <Content Include="Scripts\lua-5.2.1-tests\libs\lib11.c" />
+    <Content Include="Scripts\lua-5.2.1-tests\libs\lib2.c" />
+    <Content Include="Scripts\lua-5.2.1-tests\libs\lib21.c" />
+    <Content Include="Scripts\lua-5.2.1-tests\ltests\ltests.c" />
+    <Content Include="Scripts\lua-5.2.1-tests\ltests\ltests.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Scripts\lua-5.2.1-tests\libs\P1\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -7,16 +7,16 @@ namespace IronLua.Runtime.Binder
 {
     class LuaSetMemberBinder : SetMemberBinder
     {
-        private readonly LuaContext _context;
+        private readonly CodeContext _context;
 
-        public LuaSetMemberBinder(LuaContext context, string name, bool ignoreCase = false)
+        public LuaSetMemberBinder(CodeContext context, string name, bool ignoreCase = false)
             : base(name, ignoreCase)
         {
             Contract.Requires(context != null);
             _context = context;
         }
 
-        public LuaContext Context
+        public CodeContext Context
         {
             get { return _context; }
         }

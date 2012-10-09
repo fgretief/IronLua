@@ -1,4 +1,5 @@
 using Microsoft.Scripting;
+using Microsoft.Scripting.Actions;
 using System;
 using System.Diagnostics.Contracts;
 using System.Dynamic;
@@ -8,18 +9,12 @@ namespace IronLua.Runtime.Binder
 {
     class LuaGetMemberBinder : GetMemberBinder
     {
-        private readonly LuaContext _context;
+        private readonly CodeContext _context;
 
-        public LuaGetMemberBinder(LuaContext context, string name, bool ignoreCase = false)
+        public LuaGetMemberBinder(CodeContext context, string name, bool ignoreCase = false)
             : base(name, ignoreCase)
         {
-            Contract.Requires(context != null);
             _context = context;
-        }
-
-        public LuaContext Context
-        {
-            get { return _context; }
         }
 
         DynamicMetaObject MakeScriptScopeGetMember(DynamicMetaObject target, string name)
@@ -46,10 +41,8 @@ namespace IronLua.Runtime.Binder
 
 
             if (target.LimitType == typeof(IDynamicMetaObjectProvider))
-                return WrapToObject(base.FallbackGetMember(target));
-
-            else if (target.LimitType == typeof(LuaTable))
-                return WrapToObject(base.FallbackGetMember(target));
+                return new DefaultBinder().GetMember(Name, target);
+            
 
             return WrapToObject(_context.Binder.GetMember(Name, target));            
         }
