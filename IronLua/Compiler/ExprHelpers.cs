@@ -1,6 +1,8 @@
 ﻿using System;
 using IronLua.Runtime;
 using Expr = System.Linq.Expressions.Expression;
+using Microsoft.Scripting.Ast;
+using Microsoft.Scripting.Runtime;
 
 namespace IronLua.Compiler
 {
@@ -22,7 +24,7 @@ namespace IronLua.Compiler
         {
             return Expr.IfThen(
                 Expr.Invoke(Expr.Constant((Func<double, bool>)Double.IsNaN), number),
-                Expr.Throw(Expr.New(MemberInfos.NewRuntimeException, Expr.Constant(context), Expr.Constant(format), Expr.Constant(args))));
+                LightExceptions.Throw(Expr.New(MemberInfos.NewRuntimeException, Expr.Constant(context), Expr.Constant(format), Expr.Constant(args))));
         }
 
         public static Expr ConvertToNumberAndCheck(CodeContext context, Expr expression, string format, params object[] args)
@@ -37,7 +39,7 @@ namespace IronLua.Compiler
                     Expr.Invoke(
                         Expr.Constant((Func<double, bool>)Double.IsNaN), numberVar),
                     Expr.Block(
-                        Expr.Throw(Expr.New(MemberInfos.NewRuntimeException, Expr.Constant(context), Expr.Constant(format), Expr.Constant(args))),
+                        LightExceptions.Throw(Expr.New(MemberInfos.NewRuntimeException, Expr.Constant(context), Expr.Constant(format), Expr.Constant(args))),
                         Expr.Constant(Double.NaN)),
                     numberVar));
         }

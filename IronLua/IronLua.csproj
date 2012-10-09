@@ -40,11 +40,11 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Dynamic">
-      <HintPath>..\libs\Net40\Microsoft.Dynamic.dll</HintPath>
+    <Reference Include="Microsoft.Dynamic, Version=1.1.0.30, Culture=neutral, PublicKeyToken=7f709c5b713576e1, processorArchitecture=MSIL">
+      <HintPath>..\libs\Net40\Debug\Microsoft.Dynamic.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Scripting">
-      <HintPath>..\libs\Net40\Microsoft.Scripting.dll</HintPath>
+    <Reference Include="Microsoft.Scripting, Version=1.1.0.30, Culture=neutral, PublicKeyToken=7f709c5b713576e1, processorArchitecture=MSIL">
+      <HintPath>..\libs\Net40\Debug\Microsoft.Scripting.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -70,6 +70,7 @@
     <Compile Include="Compiler\Parsing\Tokenizer.cs" />
     <Compile Include="Compiler\ScopeLocalsStorage.cs" />
     <Compile Include="Hosting\Lua.cs" />
+    <Compile Include="Hosting\LuaCodeDomGen.cs" />
     <Compile Include="Hosting\LuaCommandLine.cs" />
     <Compile Include="Hosting\LuaConsoleHost.cs" />
     <Compile Include="Hosting\LuaConsoleOptions.cs" />
@@ -137,6 +138,7 @@
     <Compile Include="Util\CharExtensions.cs" />
     <Compile Include="Util\DictionaryExtensions.cs" />
     <Compile Include="Util\EnumerableExtensions.cs" />
+    <Compile Include="Util\ExceptionExtensions.cs" />
     <Compile Include="Util\HashHelpers.cs" />
     <Compile Include="Util\ParameterInfoExtensions.cs" />
     <Compile Include="Util\TypeExtensions.cs" />

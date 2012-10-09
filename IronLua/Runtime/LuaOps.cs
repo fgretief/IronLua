@@ -49,7 +49,7 @@ namespace IronLua.Runtime
 
             var metamethod = GetMetamethod(context, obj, Constant.LENGTH_METAMETHOD);
             if (metamethod != null)
-                return context.DynamicCache.GetDynamicCall1()(metamethod, obj);
+                return context.DynamicCache.GetDynamicCall1().Target(metamethod, obj);
 
             throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "get length of", BaseLibrary.Type(obj));
         }
@@ -60,7 +60,7 @@ namespace IronLua.Runtime
 
             var metamethod = GetMetamethod(context, obj, Constant.UNARYMINUS_METAMETHOD);
             if (metamethod != null)
-                return context.DynamicCache.GetDynamicCall1()(metamethod, obj);
+                return context.DynamicCache.GetDynamicCall1().Target(metamethod, obj);
 
             throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "perform arithmetic on", BaseLibrary.Type(obj));
         }
@@ -74,9 +74,9 @@ namespace IronLua.Runtime
             if (metamethod != null)
             {
                 if (metamethod is Delegate)
-                    return context.DynamicCache.GetDynamicCall2()(metamethod, obj, key);
+                    return context.DynamicCache.GetDynamicCall2().Target(metamethod, obj, key);
                 if (metamethod is LuaTable)
-                    return context.DynamicCache.GetDynamicIndex()(obj, key);
+                    return context.DynamicCache.GetDynamicIndex().Target(obj, key);
             }
 
             if (obj is LuaTable)
@@ -94,9 +94,9 @@ namespace IronLua.Runtime
             if (metamethod != null)
             {
                 if (metamethod is Delegate)
-                    return context.DynamicCache.GetDynamicCall3()(metamethod, obj, key, value);
+                    return context.DynamicCache.GetDynamicCall3().Target(metamethod, obj, key, value);
                 if (metamethod is LuaTable)
-                    return context.DynamicCache.GetDynamicNewIndex()(obj, key, value);
+                    return context.DynamicCache.GetDynamicNewIndex().Target(obj, key, value);
             }
 
             if (obj is LuaTable)       
@@ -132,7 +132,7 @@ namespace IronLua.Runtime
                 var array = new object[args.Length + 1];
                 array[0] = obj;
                 Array.Copy(args, 0, array, 1, args.Length);
-                return context.DynamicCache.GetDynamicCall1()(metamethod, new Varargs(array));
+                return context.DynamicCache.GetDynamicCall1().Target(metamethod, new Varargs(array));
             }
 
             throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "call", BaseLibrary.Type(obj));
@@ -145,7 +145,7 @@ namespace IronLua.Runtime
             var metamethod = GetMetamethod(context, left, Constant.CONCAT_METAMETHOD) ??
                              GetMetamethod(context, right, Constant.CONCAT_METAMETHOD);
             if (metamethod != null)
-                return context.DynamicCache.GetDynamicCall2()(metamethod, left, right);
+                return context.DynamicCache.GetDynamicCall2().Target(metamethod, left, right);
 
             var typeName = left is string ? BaseLibrary.Type(left) : BaseLibrary.Type(right);
             throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "concatenate", typeName);
@@ -190,7 +190,7 @@ namespace IronLua.Runtime
             var metamethod = GetMetamethod(context, left, methodName) ?? 
                              GetMetamethod(context, right, methodName);
             if (metamethod != null)
-                return context.DynamicCache.GetDynamicCall2()(metamethod, left, right);
+                return context.DynamicCache.GetDynamicCall2().Target(metamethod, left, right);
 
             var typeName = BaseLibrary.Type(BaseLibrary.ToNumber(context, left) == null ? left : right);
             throw LuaRuntimeException.Create(context, ExceptionMessage.OP_TYPE_ERROR, "perform arithmetic on", typeName);
@@ -214,9 +214,9 @@ namespace IronLua.Runtime
             if (metamethod != null)
             {
                 if (invert)
-                    return context.DynamicCache.GetDynamicCall2()(metamethod, right, left);
+                    return context.DynamicCache.GetDynamicCall2().Target(metamethod, right, left);
                 else
-                    return context.DynamicCache.GetDynamicCall2()(metamethod, left, right);
+                    return context.DynamicCache.GetDynamicCall2().Target(metamethod, left, right);
             }
 
             // In the absence of a '<=' metamethod, try '<', 'a <= b' is translated to 'not (b < a)'
@@ -227,9 +227,9 @@ namespace IronLua.Runtime
             if (metamethod != null)
             {
                 if (invert)
-                    return Not(context.DynamicCache.GetDynamicCall2()(metamethod, right, left));
+                    return Not(context.DynamicCache.GetDynamicCall2().Target(metamethod, right, left));
                 else
-                    return Not(context.DynamicCache.GetDynamicCall2()(metamethod, left, right));
+                    return Not(context.DynamicCache.GetDynamicCall2().Target(metamethod, left, right));
             }
 
             if (leftTypeName == rightTypeName)
@@ -250,7 +250,7 @@ namespace IronLua.Runtime
             var metamethod = GetRelationalMetamethod(context, op, left, right);
 
             if (metamethod != null)
-                return context.DynamicCache.GetDynamicCall2()(metamethod, left, right);
+                return context.DynamicCache.GetDynamicCall2().Target(metamethod, left, right);
             else
                 return left == null ? right.Equals(left) : left.Equals(right);
         }
@@ -277,7 +277,7 @@ namespace IronLua.Runtime
             if ((table = obj as LuaTable) != null)
                 table = table.Metatable;
             else if (context != null)
-                table = context.GetTypeMetatable(obj);
+                table = context.Language.GetTypeMetatable(obj);
 
             return methodName == null || table == null ? null : table.GetValue(methodName);
         }

@@ -4,6 +4,8 @@ using System.Dynamic;
 using System.Linq.Expressions;
 using IronLua.Runtime.Binder;
 using Microsoft.Scripting.Utils;
+using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace IronLua.Runtime
 {
@@ -21,12 +23,12 @@ namespace IronLua.Runtime
         LuaSetIndexBinder setIndexBinder;
         LuaGetIndexBinder getIndexBinder;
 
-        Func<object, object, object> getDynamicIndexCache;
-        Func<object, object, object, object> getDynamicNewIndexCache;
-        Func<object, object> getDynamicCallCache0;
-        Func<object, object, object> getDynamicCallCache1;
-        Func<object, object, object, object> getDynamicCallCache2;
-        Func<object, object, object, object, object> getDynamicCallCache3;
+        CallSite<Func<object, object, object>> getDynamicIndexCache = null;
+        CallSite<Func<object, object, object, object>> getDynamicNewIndexCache = null;
+        CallSite<Func<object, object>> getDynamicCallCache0 = null;
+        CallSite<Func<object, object, object>> getDynamicCallCache1 = null;
+        CallSite<Func<object, object, object, object>> getDynamicCallCache2;
+        CallSite<Func<object, object, object, object, object>> getDynamicCallCache3;
 
         static DynamicCache()
         {
@@ -123,92 +125,74 @@ namespace IronLua.Runtime
             }
         }
 
-        public Func<object, object, object> GetDynamicIndex()
+        public CallSite<Func<object, object, object>> GetDynamicIndex()
         {
-            if (getDynamicIndexCache != null)
-                return getDynamicIndexCache;
+            //var objVar = Expression.Parameter(typeof(object));
+            //var keyVar = Expression.Parameter(typeof(object));
+            //var expr = Expression.Lambda<Func<object, object, object>>(
+            //    Expression.Dynamic(this.GetGetIndexBinder(), typeof(object), objVar, keyVar),
+            //    objVar, keyVar);
 
-            var objVar = Expression.Parameter(typeof(object));
-            var keyVar = Expression.Parameter(typeof(object));
-            var expr = Expression.Lambda<Func<object, object, object>>(
-                Expression.Dynamic(this.GetGetIndexBinder(), typeof(object), objVar, keyVar),
-                objVar, keyVar);
+            //return getDynamicIndexCache = expr.Compile();
 
-            return getDynamicIndexCache = expr.Compile();
+            if (getDynamicNewIndexCache == null)
+                Interlocked.CompareExchange(ref getDynamicIndexCache, CallSite<Func<object, object, object>>.Create(GetGetIndexBinder()), null);
+            return getDynamicIndexCache;
         }
 
-        public Func<object, object, object, object> GetDynamicNewIndex()
+        public CallSite<Func<object, object, object, object>> GetDynamicNewIndex()
         {
-            if (getDynamicNewIndexCache != null)
-                return getDynamicNewIndexCache;
+            //var objVar = Expression.Parameter(typeof(object));
+            //var keyVar = Expression.Parameter(typeof(object));
+            //var valueVar = Expression.Parameter(typeof(object));
+            //var expr = Expression.Lambda<Func<object, object, object, object>>(
+            //    Expression.Dynamic(this.GetSetIndexBinder(), typeof(object), objVar, keyVar, valueVar),
+            //    objVar, keyVar, valueVar);
 
-            var objVar = Expression.Parameter(typeof(object));
-            var keyVar = Expression.Parameter(typeof(object));
-            var valueVar = Expression.Parameter(typeof(object));
-            var expr = Expression.Lambda<Func<object, object, object, object>>(
-                Expression.Dynamic(this.GetSetIndexBinder(), typeof(object), objVar, keyVar, valueVar),
-                objVar, keyVar, valueVar);
+            //return getDynamicNewIndexCache = expr.Compile();
 
-            return getDynamicNewIndexCache = expr.Compile();
+            if(getDynamicNewIndexCache == null)
+                Interlocked.CompareExchange(ref getDynamicNewIndexCache, CallSite<Func<object, object, object, object>>.Create(GetSetIndexBinder()), null);
+            return getDynamicNewIndexCache;
         }
 
-        public Func<object, object> GetDynamicCall0()
+        public CallSite<Func<object, object>> GetDynamicCall0()
         {
-            if (getDynamicCallCache0 != null)
-                return getDynamicCallCache0;
-
-            var funcVar = Expression.Parameter(typeof(object));
-            var expr = Expression.Lambda<Func<object, object>>(
-                Expression.Dynamic(this.GetInvokeBinder(new CallInfo(0)), typeof(object), funcVar), funcVar);
-
-            return getDynamicCallCache0 = expr.Compile();
+            if(getDynamicCallCache0 == null)
+                Interlocked.CompareExchange(ref getDynamicCallCache0, 
+                    CallSite<Func<object, object>>.Create(GetInvokeBinder(new CallInfo(0)))
+                    , null);
+            return getDynamicCallCache0;
         }
 
-        public Func<object, object, object> GetDynamicCall1()
+        public CallSite<Func<object, object, object>> GetDynamicCall1()
         {
-            if (getDynamicCallCache1 != null)
-                return getDynamicCallCache1;
-
-            var funcVar = Expression.Parameter(typeof(object));
-            var argVar = Expression.Parameter(typeof(object));
-            var expr = Expression.Lambda<Func<object, object, object>>(
-                Expression.Dynamic(this.GetInvokeBinder(new CallInfo(1)), typeof(object), funcVar, argVar),
-                funcVar, argVar);
-
-            return getDynamicCallCache1 = expr.Compile();
+            if (getDynamicCallCache1 == null)
+                Interlocked.CompareExchange(ref getDynamicCallCache1,
+                    CallSite<Func<object, object, object>>.Create(GetInvokeBinder(new CallInfo(1)))
+                    , null);
+            return getDynamicCallCache1;
         }
 
-        public Func<object, object, object, object> GetDynamicCall2()
-        {
-            if (getDynamicCallCache2 != null)
-                return getDynamicCallCache2;
-
-            var funcVar = Expression.Parameter(typeof(object));
-            var arg1Var = Expression.Parameter(typeof(object));
-            var arg2Var = Expression.Parameter(typeof(object));
-
-            var expr = Expression.Lambda<Func<object, object, object, object>>(
-                Expression.Dynamic(this.GetInvokeBinder(new CallInfo(2)), typeof(object), funcVar, arg1Var, arg2Var),
-                funcVar, arg1Var, arg2Var);
-
-            return getDynamicCallCache2 = expr.Compile();
+        public CallSite<Func<object, object, object, object>> GetDynamicCall2()
+        {            
+            if (getDynamicCallCache2 == null)
+            {
+                var temp = CallSite<Func<object, object, object, object>>.Create(GetInvokeBinder(new CallInfo(2)));
+                Interlocked.CompareExchange(ref getDynamicCallCache2,
+                    temp
+                    , null);
+            }
+            return getDynamicCallCache2;
         }
 
-        public Func<object, object, object, object, object> GetDynamicCall3()
+        public CallSite<Func<object, object, object, object, object>> GetDynamicCall3()
         {
-            if (getDynamicCallCache3 != null)
-                return getDynamicCallCache3;
-
-            var funcVar = Expression.Parameter(typeof(object));
-            var arg1Var = Expression.Parameter(typeof(object));
-            var arg2Var = Expression.Parameter(typeof(object));
-            var arg3Var = Expression.Parameter(typeof(object));
-
-            var expr = Expression.Lambda<Func<object, object, object, object, object>>(
-                Expression.Dynamic(this.GetInvokeBinder(new CallInfo(3)), typeof(object), funcVar, arg1Var, arg2Var, arg3Var),
-                funcVar, arg1Var, arg2Var, arg3Var);
-
-            return getDynamicCallCache3 = expr.Compile();
+            if (getDynamicCallCache3 == null)
+                Interlocked.CompareExchange(ref getDynamicCallCache3,
+                    CallSite<Func<object, object, object, object, object>>.Create(GetInvokeBinder(new CallInfo(3)))
+                    , null);
+            return getDynamicCallCache3;
         }
     }
 }
