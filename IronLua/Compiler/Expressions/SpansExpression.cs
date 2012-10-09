@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Linq.Expressions;
 using Microsoft.Scripting;
+using Microsoft.Scripting.Ast;
 
 namespace IronLua.Compiler.Expressions
 {
@@ -51,14 +52,14 @@ namespace IronLua.Compiler.Expressions
         public override Expression Reduce()
         {
             if (!_span.IsValid || !_span.Start.IsValid || !_span.End.IsValid)
-                return _body;
+                return _body.Reduce();
 
-            return Expression.TryFinally(
-                Expression.Block(
-                    Expression.DebugInfo(_document, _span.Start.Line, _span.Start.Column, _span.End.Line, _span.End.Column),
-                    _body.Reduce()),
-                Expression.ClearDebugInfo(_document)
-            );
+#if DEBUG
+            return _body.Reduce();
+#else
+            return Utils.AddDebugInfo(_body.Reduce(), _document, _span.Start, _span.End);     
+#endif
+
         }
 
         public override Type Type

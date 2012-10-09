@@ -85,7 +85,7 @@ namespace IronLua.Library
             if (table != null)
                 table = table.Metatable;
             if (table == null)
-                table = Context.GetTypeMetatable(obj);
+                table = Context.Language.GetTypeMetatable(obj);
             if (table == null)
                 return null;
 
@@ -113,7 +113,7 @@ namespace IronLua.Library
 
             while (true)
             {
-                var result = invoker(func);
+                var result = invoker.Target(func);
                 if (result == null)
                     break;
 
@@ -192,7 +192,7 @@ namespace IronLua.Library
         {
             try
             {
-                var result = Context.DynamicCache.GetDynamicCall1()(f, new Varargs(args));
+                var result = Context.DynamicCache.GetDynamicCall1().Target(f, new Varargs(args));
                 return new Varargs(true, result);
             }
             catch (LuaErrorException e)
@@ -213,7 +213,7 @@ namespace IronLua.Library
             {
                 if (i > 0) 
                     writer.Write("\t");
-                writer.Write(ToStringEx(args[i]));
+                writer.Write(ToString(Context, args[i]));
             }
             writer.WriteLine();
         }
@@ -304,27 +304,21 @@ namespace IronLua.Library
 
         public object ToString(object e)
         {
-            // TODO: Fix casing of boolean's
-            var metaToString = LuaOps.GetMetamethod(Context, e, Constant.TOSTRING_METAFIELD);
-            if (metaToString == null)
-                return e.ToString();
-
-            return Context.DynamicCache.GetDynamicCall1()(metaToString, e);
+            return ToString(Context, e);
         }
 
-        public static string ToStringEx(object v)
+        public static string ToString(CodeContext context, object v)
         {
             if (ReferenceEquals(v, null))
                 return "nil";
-
-            // TODO: check if metatable exist and if __tostring entry is set
-
+            
             if (v is LuaTable)
             {
                 var table = v as LuaTable;
-                if (table.Metatable != null && table.Metatable.HasValue(Constant.TOSTRING_METAFIELD))                
-                    return (table.Metatable.GetValue(Constant.TOSTRING_METAFIELD) as Func<LuaTable, string>)(table);                
-
+                var metaToString = LuaOps.GetMetamethod(context, v, Constant.TOSTRING_METAFIELD);
+                if (metaToString != null)
+                    return ToString(context, context.DynamicCache.GetDynamicCall1().Target(metaToString, v));
+                
                 return String.Format("table [{0} entries]", (v as LuaTable).Count());
             }
             
@@ -343,7 +337,10 @@ namespace IronLua.Library
 
                 return String.Format("{0} {1}", functionName, functionFormat);
             }
-            
+
+            if (v is bool)            
+                return ((bool)v).ToString().ToLower();
+                        
             return v.ToString();
         }
 
@@ -395,12 +392,12 @@ namespace IronLua.Library
         {
             try
             {
-                var result = Context.DynamicCache.GetDynamicCall0()(f);
+                var result = Context.DynamicCache.GetDynamicCall0().Target(f);
                 return new Varargs(true, result);
             }
             catch (Exception e)
             {
-                var result = Context.DynamicCache.GetDynamicCall1()(err, e.Message);
+                var result = Context.DynamicCache.GetDynamicCall1().Target(err, e.Message);
                 return new Varargs(false, result);
             }
         }
@@ -529,7 +526,7 @@ namespace IronLua.Library
             table.AddNotPresent("setfenv", (Func<object, LuaTable, object>)SetFEnv);
             table.AddNotPresent("setmetatable", (Func<LuaTable, LuaTable, LuaTable>)SetMetatable);
             table.AddNotPresent("tonumber", (Func<object, object, object>)ToNumber);
-            table.AddNotPresent("tostring", (Func<object, object>)ToStringEx);
+            table.AddNotPresent("tostring", (Func<object, object>)ToString);
             table.AddNotPresent("type", (Func<object, string>)Type);
             table.AddNotPresent("unpack", (Func<LuaTable, object, object, Varargs>)Unpack);
             table.AddNotPresent("_VERSION", Constant.LUA_VERSION);
@@ -564,7 +561,7 @@ namespace IronLua.Library
             table.RemoveIfEqual("setfenv", (Func<object, LuaTable, object>)SetFEnv);
             table.RemoveIfEqual("setmetatable", (Func<LuaTable, LuaTable, LuaTable>)SetMetatable);
             table.RemoveIfEqual("tonumber", (Func<object, object, object>)ToNumber);
-            table.RemoveIfEqual("tostring", (Func<object, object>)ToStringEx);
+            table.RemoveIfEqual("tostring", (Func<object, object>)ToString);
             table.RemoveIfEqual("type", (Func<object, string>)Type);
             table.RemoveIfEqual("unpack", (Func<LuaTable, object, object, Varargs>)Unpack);
             table.RemoveIfEqual("_VERSION", Constant.LUA_VERSION);

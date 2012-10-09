@@ -41,13 +41,13 @@ namespace IronLua.Runtime
             {
                 return _compiledLambda(scope);
             }
-            catch (LuaRuntimeException lrex)
+            catch (LuaRuntimeException lrex) //BOOOOBS
             {
                 throw;
             }
             catch (MissingMemberException mmex)
             {
-                throw LuaRuntimeException.Create(Context, "could not find the member '" + mmex.Message + "' on '" + Context.CurrentVariableIdentifier + "'", mmex);
+                throw LuaRuntimeException.Create(Context, "could not find the variable '" + mmex.Message + "'", mmex);
             }
             catch (Exception ex)
             {

@@ -324,7 +324,7 @@ namespace IronLua
     public class LuaErrorException : LuaRuntimeException
     {
         internal LuaErrorException(CodeContext context, object errorObject, int stackLevel = 1, Exception innerException = null)
-            : base(context, BaseLibrary.ToStringEx(errorObject), innerException)
+            : base(context, BaseLibrary.ToString(context, errorObject), innerException)
         {
             Result = errorObject;
             StackLevel = stackLevel;

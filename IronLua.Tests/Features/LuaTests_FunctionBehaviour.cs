@@ -30,7 +30,7 @@ namespace IronLua.Tests.Features
             Assert.That(error, Is.Empty);
         }
 
-        [Test, ExpectedException(typeof(LuaRuntimeException), ExpectedMessage = "Attempt to invoke a nil object (fact)")]
+        [Test, ExpectedException(typeof(LuaRuntimeException), ExpectedMessage = "could not find the variable 'fact'")]
         public void FunctionBehaviour_RecursiveMissing()
         {
             string code =

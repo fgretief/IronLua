@@ -20,7 +20,6 @@ namespace IronLua.Runtime
         public CodeContext(LuaContext language)
         {
             Language = language;
-            _metatables = SetupMetatables();
             _BaseLibrary = new BaseLibrary(this);
             _Libraries = new LuaTable(this);
 
@@ -184,66 +183,7 @@ namespace IronLua.Runtime
         }
         
         #endregion
-        
-        #region Metatable management
-
-        readonly Dictionary<Type, LuaTable> _metatables;
-
-        Dictionary<Type, LuaTable> SetupMetatables()
-        {
-            return new Dictionary<Type, LuaTable>()
-            {
-                {typeof(bool), new LuaTable(this)},
-                {typeof(double), new LuaTable(this)},
-                {typeof(string), new LuaTable(this)},
-                {typeof(Delegate), new LuaTable(this)},
-            };
-        }
-
-        internal LuaTable GetTypeMetatable(object obj)
-        {
-            if (obj == null)
-                return null;
-
-            LuaTable table;
-
-            if (obj is BoundMemberTracker)
-            {
-                var tracker = obj as BoundMemberTracker;
-
-                if (tracker.ObjectInstance is LuaTable)
-                {
-                    if ((tracker.ObjectInstance as LuaTable).Metatable != null)
-                        return (tracker.ObjectInstance as LuaTable).Metatable;
-                }
-
-                if (_metatables.TryGetValue(tracker.ObjectInstance.GetType(), out table))
-                    return table;
-            }
-
-            var objType = obj.GetType();
-
-            if (_metatables.TryGetValue(objType, out table))
-                return table;
-
-            throw LuaRuntimeException.Create(this, "Could not find metatable for '{0}'", objType.FullName);
-        }
-
-        internal LuaTable SetTypeMetatable(Type type, LuaTable metatable)
-        {
-            if (type == null || metatable == null)
-                return null;
-
-            LuaTable table;
-            if (_metatables.TryGetValue(type, out table))
-                return table;
-
-            _metatables.Add(type, metatable);
-            return metatable;
-        }
-
-        #endregion
-        
+                
         #region Object Operations Support
 
         // These methods is called by the DynamicOperations class that can be

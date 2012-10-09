@@ -73,12 +73,12 @@ end
             code = @"
 local cos = math.cos
 local sin = math.sin
-local assert = assert
+local a = assert
 local tau = math.tau
 
 for i = 0, tau,0.001 do
-    assert(cos(i) == cos(-i))
-    assert(sin(i) == -sin(-i))
+    a(cos(i) == cos(-i))
+    a(sin(i) == -sin(-i))
 end
 ";
 
@@ -180,6 +180,26 @@ end
             Console.WriteLine("Lua Access: " + stp.ElapsedMilliseconds + "ms");
 
 
+        }
+
+        [Test(Description = "Tests the ideal case (identical keys being requested) vs. worst case (different keys being requested each time)")]
+        public void Ideal_vs_Worst()
+        {
+            Stopwatch stp = new Stopwatch();
+            stp.Start();
+            engine.Execute(
+@"
+    for i = 0,10000,1 do math.sin(i) math.sin(i) end
+");
+            stp.Stop();
+            Console.WriteLine("Ideal Case: " + stp.ElapsedMilliseconds + "ms");
+
+            stp.Restart();
+            engine.Execute(@"
+    for i = 0,10000,1 do math.sin(i) math.cos(i) end
+");
+            stp.Stop();
+            Console.WriteLine("Worst Case: " + stp.ElapsedMilliseconds + "ms");
         }
     }
 }

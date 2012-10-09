@@ -108,11 +108,11 @@ namespace IronLua.Library
                 var typeTable = GetTypeTable(type);
                 current.AddOrSet(typeName, typeTable);
 
-                Context.SetTypeMetatable(type, InteropMetatable);
+                Context.Language.SetTypeMetatable(type, InteropMetatable);
                 return typeTable;
             }
 
-            Context.SetTypeMetatable(type, InteropMetatable);
+            Context.Language.SetTypeMetatable(type, InteropMetatable);
             return GetTypeTable(type);
         }
 
@@ -151,7 +151,7 @@ namespace IronLua.Library
                 if (type.IsEnum)
                     try
                     {
-                        return Enum.Parse(type, BaseLibrary.ToStringEx(index));
+                        return Enum.Parse(type, BaseLibrary.ToString(Context, index));
                     }
                     catch (Exception ex)
                     {
@@ -218,7 +218,7 @@ namespace IronLua.Library
                     catch (Exception ex)
                     {
                         throw LuaRuntimeException.Create(Context,
-                            string.Format("could not get field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
+                            string.Format("could not get field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToString(Context, target)),
                             ex);
                     }
                 else if (members.Any() && members.All(x => x.MemberType == MemberTypes.Property))
@@ -229,7 +229,7 @@ namespace IronLua.Library
                     catch (Exception ex)
                     {
                         throw LuaRuntimeException.Create(Context,
-                            string.Format("could not get property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
+                            string.Format("could not get property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToString(Context, target)),
                             ex);
                     }
 
@@ -323,7 +323,7 @@ namespace IronLua.Library
                     catch (Exception ex)
                     {
                         throw LuaRuntimeException.Create(Context,
-                            string.Format("could not set field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
+                            string.Format("could not set field value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToString(Context, target)),
                             ex);
                     }
                 }
@@ -337,7 +337,7 @@ namespace IronLua.Library
                     catch (Exception ex)
                     {
                         throw LuaRuntimeException.Create(Context,
-                            string.Format("could not set property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToStringEx(target)),
+                            string.Format("could not set property value for '{0}' on '{1}'", index.ToString(), BaseLibrary.ToString(Context, target)),
                             ex);
                     }
                 }
@@ -751,14 +751,14 @@ namespace IronLua.Library
         #region Event Handlers
 
         private void InteropSubscribeEvent(object target, string eventName, Delegate handler)
-        {
-            
+        {            
             //Static events
             if (target is LuaTable)
             {
                 var type = (target as LuaTable).GetValue("__clrtype") as Type;
 
                 var eventSource = type.GetEvent(eventName, BindingFlags.Static | BindingFlags.Public);
+                
                 if (eventSource != null)
                 {
                     Delegate safeHandler = GetEventHandlerDelegate(eventSource.EventHandlerType, handler);

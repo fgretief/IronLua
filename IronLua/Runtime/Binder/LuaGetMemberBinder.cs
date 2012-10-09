@@ -1,4 +1,5 @@
 using Microsoft.Scripting;
+using Microsoft.Scripting.Actions;
 using System;
 using System.Diagnostics.Contracts;
 using System.Dynamic;
@@ -40,10 +41,8 @@ namespace IronLua.Runtime.Binder
 
 
             if (target.LimitType == typeof(IDynamicMetaObjectProvider))
-                return WrapToObject(base.FallbackGetMember(target));
-
-            else if (target.LimitType == typeof(LuaTable))
-                return WrapToObject(base.FallbackGetMember(target));
+                return new DefaultBinder().GetMember(Name, target);
+            
 
             return WrapToObject(_context.Binder.GetMember(Name, target));            
         }

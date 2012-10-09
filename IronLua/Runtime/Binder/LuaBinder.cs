@@ -42,7 +42,7 @@ namespace IronLua.Runtime.Binder
         public override object Convert(object obj, System.Type toType)
         {
             if (obj is double && toType == typeof(string))
-                return BaseLibrary.ToStringEx(obj);
+                return BaseLibrary.ToString(_context, obj);
 
             else if (obj is string && toType == typeof(double))
                 return BaseLibrary.ToNumber(_context, obj, 10.0);
@@ -53,16 +53,9 @@ namespace IronLua.Runtime.Binder
             return base.Convert(obj, toType);
         }
 
-        public override MemberGroup GetMember(MemberRequestKind action, Type type, string name)
+        public override ErrorInfo MakeEventValidation(MemberGroup members, DynamicMetaObject eventObject, DynamicMetaObject value, OverloadResolverFactory resolverFactory)
         {
-            try
-            {
-                return base.GetMember(action, type, name);
-            }
-            catch (Exception ex)
-            {
-                throw LuaRuntimeException.Create(_context, string.Format("could not find the specified member on '{0}'", type.FullName), ex);
-            }
+            return base.MakeEventValidation(members, eventObject, value, resolverFactory);
         }
 
         public override ErrorInfo MakeMissingMemberErrorInfo(Type type, string name)

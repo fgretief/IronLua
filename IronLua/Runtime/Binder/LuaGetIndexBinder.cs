@@ -50,10 +50,9 @@ namespace IronLua.Runtime.Binder
             }
 
             var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.Index(_context, target, indexes), Context,
-                    new FunctionStack(Context, null, null, Constant.INDEX_METAMETHOD));
+                    new FunctionStack(Constant.INDEX_METAMETHOD));
 
-            return WrapToObject(new DynamicMetaObject(expression, BindingRestrictions.Empty));
-            
+            return WrapToObject(new DynamicMetaObject(expression, BindingRestrictions.Empty));            
         }
     }
 }

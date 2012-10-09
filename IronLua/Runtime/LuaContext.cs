@@ -24,7 +24,6 @@ namespace IronLua.Runtime
 {
     public sealed class LuaContext : LanguageContext
     {
-        
         public LuaContext(ScriptDomainManager manager, IDictionary<string, object> options = null)
             : base(manager)
         {
@@ -33,6 +32,7 @@ namespace IronLua.Runtime
                 EnableTracing = options["tracing"] is bool && (bool)options["tracing"];
 
             InvariantCodeContext = new CodeContext(this);
+            _metatables = SetupMetatables();
 
             SetupLibraries();
         }
@@ -117,6 +117,23 @@ namespace IronLua.Runtime
             return obj;
         }
 
+
+        /// <summary>
+        /// Attempts to retrieve a string representation of the given object
+        /// </summary>
+        /// <param name="obj">The object to retrieve the string value for</param>
+        /// <returns>Returns a string representing the object</returns>
+        public string FormatObject(object obj)
+        {
+            return FormatObject(null, obj);
+        }
+
+        public override string FormatObject(DynamicOperations operations, object obj)
+        {
+            return BaseLibrary.ToString(SharedContext, obj);
+        }
+
+
         #endregion
 
         #region Trace/Debug
@@ -127,6 +144,9 @@ namespace IronLua.Runtime
         //[ThreadStatic]
         //private static Stack<LuaTracebackListener> _tracebackListeners;
         //private static int _tracingThreads;
+
+        [ThreadStatic]
+        private static bool _enableTracing;
 
         internal Debugging.CompilerServices.DebugContext DebugContext
         {
@@ -169,7 +189,7 @@ namespace IronLua.Runtime
         }
 
         public bool EnableTracing
-        { get; set; }
+        { get { return _enableTracing; } set { _enableTracing = value; } }
 
         #endregion
 
@@ -195,7 +215,87 @@ namespace IronLua.Runtime
         //}
 
         #endregion
+
+        #region Converters
+
+        private DynamicDelegateCreator _delegateCreator;
+        public DynamicDelegateCreator DelegateCreator
+        {
+            get
+            {
+                if (_delegateCreator == null)                
+                    Interlocked.CompareExchange(ref _delegateCreator, new DynamicDelegateCreator(this), null);
+                
+                return _delegateCreator;
+            }
+        }
+
+        #endregion
         
+        #region Metatable management
+
+        readonly Dictionary<Type, LuaTable> _metatables;
+
+        Dictionary<Type, LuaTable> SetupMetatables()
+        {
+            return new Dictionary<Type, LuaTable>()
+            {
+                {typeof(bool), new LuaTable(InvariantCodeContext)},
+                {typeof(double), new LuaTable(InvariantCodeContext)},
+                {typeof(string), new LuaTable(InvariantCodeContext)},
+                {typeof(Delegate), new LuaTable(InvariantCodeContext)},
+            };
+        }
+
+        internal LuaTable GetTypeMetatable(object obj)
+        {
+            if (obj == null)
+                return null;
+
+            LuaTable table;
+
+            if (obj is BoundMemberTracker)
+            {
+                var tracker = obj as BoundMemberTracker;
+
+                if (tracker.ObjectInstance == null)
+                    return null;
+
+                if (tracker.ObjectInstance is LuaTable)
+                {
+                    if ((tracker.ObjectInstance as LuaTable).Metatable != null)
+                        return (tracker.ObjectInstance as LuaTable).Metatable;
+                }
+
+                if (_metatables.TryGetValue(tracker.ObjectInstance.GetType(), out table))
+                    return table;
+
+                throw LuaRuntimeException.Create(InvariantCodeContext, "Could not find metatable for '{0}'", tracker.ObjectInstance.GetType().FullName);
+            }
+
+            var objType = obj.GetType();
+
+            if (_metatables.TryGetValue(objType, out table))
+                return table;
+
+            throw LuaRuntimeException.Create(InvariantCodeContext, "Could not find metatable for '{0}'", objType.FullName);
+        }
+
+        internal LuaTable SetTypeMetatable(Type type, LuaTable metatable)
+        {
+            if (type == null || metatable == null)
+                return null;
+
+            LuaTable table;
+            if (_metatables.TryGetValue(type, out table))
+                return table;
+
+            _metatables.Add(type, metatable);
+            return metatable;
+        }
+
+        #endregion
+
         public override ScriptCode CompileSourceCode(SourceUnit sourceUnit, CompilerOptions options, ErrorSink errorSink)
         {
             ContractUtils.RequiresNotNull(sourceUnit, "sourceUnit");
@@ -299,21 +399,6 @@ namespace IronLua.Runtime
         }
 
         #endregion
-
-        /// <summary>
-        /// Attempts to retrieve a string representation of the given object
-        /// </summary>
-        /// <param name="obj">The object to retrieve the string value for</param>
-        /// <returns>Returns a string representing the object</returns>
-        public string FormatObject(object obj)
-        {
-            return FormatObject(null, obj);
-        }
-
-        public override string FormatObject(DynamicOperations operations, object obj)
-        {
-            return BaseLibrary.ToStringEx(obj);
-        }
         
         #region Lua base library management
 
@@ -342,6 +427,53 @@ namespace IronLua.Runtime
             BaseLibraries.Add("package", x => new PackageLibrary(x));
             BaseLibraries.Add("string", x => new StringLibrary(x));
             //TODO: Table Library
+        }
+
+        #endregion
+
+        public CodeContext SharedContext
+        { get { return InvariantCodeContext; } }
+        
+
+        #region Code Cleanup
+
+        //internal FunctionCode.CodeList _allCodes;
+        internal readonly object _codeCleanupLock = new object(), _codeUpdateLock = new object();
+        internal int _codeCount, _nextCodeCleanup = 200;
+
+        /// <summary>
+        /// Performs a GC collection including the possibility of freeing weak data structures held onto by the Lua runtime.
+        /// </summary>
+        /// <param name="generation"></param>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2001:AvoidCallingProblematicMethods", MessageId = "System.GC.Collect")]
+        internal int Collect(int generation)
+        {
+            if (generation > GC.MaxGeneration || generation < 0)
+                throw LuaRuntimeException.Create(SharedContext, "invalid generation {0}", generation);
+
+
+            // now let the CLR do it's normal collection
+            long start = GC.GetTotalMemory(false);
+
+            for (int i = 0; i < 2; i++)
+            {
+#if !SILVERLIGHT // GC.Collect
+                GC.Collect(generation);
+#else
+                GC.Collect();
+#endif
+
+                GC.WaitForPendingFinalizers();
+
+                if (generation == GC.MaxGeneration)
+                {
+                    // cleanup any weak data structures which we maintain when
+                    // we force a collection
+                    //FunctionCode.CleanFunctionCodes(this, true);
+                }
+            }
+
+            return (int)Math.Max(start - GC.GetTotalMemory(false), 0);
         }
 
         #endregion

@@ -66,7 +66,7 @@ return x";
             catch (LuaErrorException ex)
             {
                 Assert.That(ex.StackLevel == 1);
-                Assert.That(ex.Message == "(chunk):1:error message");
+                Assert.That(ex.Message == "error message");
                 Assert.That(ex.Result == "error message");
 
                 return;

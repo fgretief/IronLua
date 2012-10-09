@@ -221,13 +221,13 @@ namespace IronLua.Runtime
             Entry? entry;
             if (LastIndex.HasValue && LastIndex.Value.Key.Equals(key))
             {
-                entry = Entry(LastIndex.Value.Value);
+                entry = GetEntry(LastIndex.Value.Value);
                 if (entry.HasValue)
                     return entry.Value.Value;
             }
 
             var pos = FindEntry(key);
-            entry = Entry(pos);
+            entry = GetEntry(pos);
             if (entry.HasValue)
                 return entry.Value.Value;
             return null;
@@ -294,7 +294,7 @@ namespace IronLua.Runtime
             Parent.Remove(key);
         }
 
-        protected virtual Entry? Entry(int index)
+        protected virtual Entry? GetEntry(int index)
         {
             if (index == -1)
                 return null;
@@ -653,7 +653,7 @@ namespace IronLua.Runtime
 
         #endregion
 
-        struct Entry
+        protected struct Entry
         {
             public int HashCode;
             public object Key;
@@ -731,7 +731,7 @@ namespace IronLua.Runtime
                     if (!hasEnumerated)
                         throw new InvalidOperationException("Must call MoveNext before retrieving current value"); 
                     return new KeyValuePair<string, object>(
-                        current.First() is string ? current.First() as string : ("<<" + BaseLibrary.ToStringEx(current.First()) + ">>"),
+                        current.First() is string ? current.First() as string : ("<<" + BaseLibrary.ToString(Table.Context, current.First()) + ">>"),
                         current.Last());
                 }
             }
@@ -776,7 +776,7 @@ namespace IronLua.Runtime
 
             public override DynamicMetaObject BindInvokeMember(InvokeMemberBinder binder, DynamicMetaObject[] args)
             {
-                var expression = Expr.Dynamic(new LuaGetMemberBinder((Value as LuaTable).Context, binder.Name), typeof(object), Expression);
+                var expression = Expr.Dynamic((Value as LuaTable).Context.DynamicCache.GetGetMemberBinder(binder.Name), typeof(object), Expression);
                 return binder.FallbackInvoke(new DynamicMetaObject(expression, Restrictions), args, null);
             }
 
@@ -888,6 +888,34 @@ namespace IronLua.Runtime
                     setValue);
 
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
+            }
+
+            public override IEnumerable<string> GetDynamicMemberNames()
+            {
+                lock (Value)
+                {
+                    var t = Value as LuaTable;
+                    using (var e = t.GetEnumerator())
+                    {
+                        while (e.MoveNext())
+                        {
+                            if (e.Current.Key is string)
+                                yield return e.Current.Key as string;
+                            else if (e.Current.Key is double)
+                                yield return e.Current.Key.ToString();
+                        }
+                    }
+                }
+            }
+
+            public override DynamicMetaObject BindDeleteMember(DeleteMemberBinder binder)
+            {
+                return BindSetMember((Value as LuaTable).Context.DynamicCache.GetSetMemberBinder(binder.Name), new DynamicMetaObject(Expr.Constant(null), BindingRestrictions.Empty));
+            }
+
+            public override DynamicMetaObject BindDeleteIndex(DeleteIndexBinder binder, DynamicMetaObject[] indexes)
+            {
+                return BindSetIndex((Value as LuaTable).Context.DynamicCache.GetSetIndexBinder(), indexes, new DynamicMetaObject(Expr.Constant(null), BindingRestrictions.Empty));
             }
         }
 

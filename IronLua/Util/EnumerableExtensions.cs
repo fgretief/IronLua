@@ -94,5 +94,14 @@ namespace IronLua
             if (i != size)
                 throw new ArgumentException();
         }
+
+        /// <summary>
+        /// Runs through an enumeration, allowing an operation to be performed without needing to store any outputs
+        /// </summary>
+        public static void Run<T>(this IEnumerable<T> collection)
+        {
+            using (var e = collection.GetEnumerator())
+                while (e.MoveNext()) ;
+        }
     }
 }

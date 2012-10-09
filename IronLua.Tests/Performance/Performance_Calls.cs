@@ -49,5 +49,28 @@ namespace IronLua.Tests.Performance
 
 
         }
+
+        [Test]
+        public void Recursion_Fibonacci()
+        {
+            Stopwatch stp = new Stopwatch();
+            stp.Start();
+            engine.Execute(
+@"
+    local function fib(n) if n <= 1 then return n else return fib(n - 1) + fib(n - 2) end end
+    for i = 0,30 do print('Fibonnaci from',i,'=',fib(i)) end
+");
+            stp.Stop();
+            Console.WriteLine("Local Function: " + stp.ElapsedMilliseconds + "ms");
+
+            stp.Restart();
+            engine.Execute(
+@"
+    function fib(n) if n <= 1 then return n else return fib(n - 1) + fib(n - 2) end end
+    for i = 0,30 do print('Fibonnaci from',i,'=',fib(i)) end
+");
+            stp.Stop();
+            Console.WriteLine("Global Function: " + stp.ElapsedMilliseconds + "ms");
+        }
     }
 }
