@@ -426,7 +426,7 @@ namespace IronLua.Runtime
             BaseLibraries.Add("os", x => new OSLibrary(x));
             BaseLibraries.Add("package", x => new PackageLibrary(x));
             BaseLibraries.Add("string", x => new StringLibrary(x));
-            //TODO: Table Library
+            BaseLibraries.Add("table", x => new TableLibrary(x));
         }
 
         #endregion

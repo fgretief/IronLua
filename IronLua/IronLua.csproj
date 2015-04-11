@@ -80,6 +80,7 @@
     <Compile Include="Library\MathLibrary.cs" />
     <Compile Include="Library\OSLibrary.cs" />
     <Compile Include="Library\PackageLibrary.cs" />
+    <Compile Include="Library\TableLibrary.cs" />
     <Compile Include="Runtime\Binder\LuaBinder.cs" />
     <Compile Include="Runtime\CodeContext.cs" />
     <Compile Include="Runtime\CodeContext.Expressions.cs" />
