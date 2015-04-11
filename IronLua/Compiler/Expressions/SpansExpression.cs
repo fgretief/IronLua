@@ -15,7 +15,7 @@ namespace IronLua.Compiler.Expressions
         private readonly SymbolDocumentInfo _document;
 
         /// <summary>
-        /// Wraps an expression in <see cref="DebugInfoExpression"/>s which indicate the <see cref="SouceSpan"/> where it is defined
+        /// Wraps an expression in <see cref="DebugInfoExpression"/>s which indicate the <see cref="SourceSpan"/> where it is defined
         /// </summary>
         public SpansExpression(SymbolDocumentInfo document, SourceSpan span, Expression body)
         {
