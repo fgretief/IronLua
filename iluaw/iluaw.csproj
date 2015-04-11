@@ -12,6 +12,7 @@
     <AssemblyName>iluaw</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <ApplicationIcon>iluaw.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -44,6 +45,7 @@
   <ItemGroup>
     <Compile Include="LuaWindowConsoleHost.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Content Include="iluaw.ico" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\IronLua\IronLua.csproj">
