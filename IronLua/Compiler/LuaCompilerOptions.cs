@@ -12,6 +12,7 @@ namespace IronLua.Compiler
         public bool MultiEolns { get; set; }
         public bool UseLua51Features { get; private set; }
         public bool UseLua52Features { get; set; }
+        public bool UseLua53Features { get; set; }
         public int InitialBufferCapacity { get; set; }
 
         public LuaCompilerOptions()
@@ -20,6 +21,7 @@ namespace IronLua.Compiler
             MultiEolns = true;
             UseLua51Features = true;
             UseLua52Features = true;
+            UseLua53Features = true;
             InitialBufferCapacity = 1024;
         }
     }
