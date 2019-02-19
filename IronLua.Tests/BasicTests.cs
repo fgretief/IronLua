@@ -16,10 +16,13 @@ namespace IronLua.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(LuaRuntimeException), ExpectedMessage = "Assertion failed")]
         public void ExecuteAssertFalse()
         {
-            Lua.CreateEngine().Execute("assert(false)");
+            Assert.Throws<LuaRuntimeException>(() =>
+                {
+                    Lua.CreateEngine().Execute("assert(false)");
+                })
+                .WithMessage("Assertion failed");
         }
 
         [Test]
@@ -31,7 +34,7 @@ namespace IronLua.Tests
         [Test]
         public void ExecuteResultNil()
         {
-            Assert.IsNull(Lua.CreateEngine().Execute("return nil"));
+            Assert.That(Lua.CreateEngine().Execute("return nil"), Is.Null);
         }
 
         [Test]
@@ -72,6 +75,8 @@ namespace IronLua.Tests
             dynamic t = Lua.CreateEngine().Execute("return { 5, 10, 15, A = 'alpha', ['B'] = 'beta' }");
 
             Assert.That(t, Is.TypeOf<LuaTable>());
+            Assert.That(t.A, Is.EqualTo("alpha"));
+            Assert.That(t.B, Is.EqualTo("beta"));
             Assert.That(t[1.0], Is.EqualTo(5));
             Assert.That(t[2.0], Is.EqualTo(10));
             Assert.That(t[3.0], Is.EqualTo(15));

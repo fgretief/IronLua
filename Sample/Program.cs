@@ -30,7 +30,20 @@ end
 print('fib35',fib(35))
 ";
 
-            engine.Execute(code);
+            try
+            {
+                engine.Execute(code, scope);
+            }
+            catch (LuaRuntimeException ex)
+            {
+                //var line = ex.GetCurrentCode(code);
+                WriteLine("Exception", ConsoleColor.Red);
+                Console.WriteLine(ex.Message);
+                //Console.WriteLine(line);
+                //line = ex.GetStackTrace();
+                WriteLine("Stack Trace", ConsoleColor.Red);
+                Console.WriteLine(ex.StackTrace);
+            }
 
             Console.WriteLine();
 

@@ -14,7 +14,7 @@ namespace IronLua.Tests.Features
     {
         ScriptEngine engine;
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void PrepareEngine()
         {
             engine = Lua.CreateEngine();
@@ -96,7 +96,7 @@ namespace IronLua.Tests.Features
             dynamic result = engine.CaptureOutput(e => e.Execute(code), out output, out error);
 
             Assert.That((object)result, Is.Null);
-            Assert.That(output, Is.StringStarting(expect) & Is.StringEnding(Environment.NewLine));
+            Assert.That(output, Does.StartWith(expect).And.EndsWith(Environment.NewLine));
             Assert.That(error, Is.Empty);
         }
 
@@ -193,11 +193,13 @@ print(x)";
         }
 
         [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "function arguments expected near '42' (line 1, column 5)")]
         public void TestFunction_ArgumentsExpected1()
         {
-            engine.Execute("p:f 42");
+            Assert.Throws<SyntaxErrorException>(() =>
+                {
+                    engine.Execute("p:f 42");
+                })
+                .WithMessage("function arguments expected near '42' (line 1, column 5)");
         }
 
         [Test]

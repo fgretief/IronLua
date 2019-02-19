@@ -22,17 +22,17 @@ namespace IronLua.Tests
     {
         ScriptEngine engine;
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void CreateLuaEngine()
         {
             engine = Lua.CreateEngine();
             Assert.That(engine, Is.Not.Null);
         }
 
-        public void CheckLuaInterpeter(string luaInterp)
+        public void CheckLuaInterpreter(string luaInterp)
         {
             if (!File.Exists(luaInterp))
-                Assert.Ignore("Lua interpeter not found");
+                Assert.Ignore("Lua interpreter not found");
         }
 
         string lua50 = TestUtils.GetTestPath(@"libs\lua5.0.exe");
@@ -104,8 +104,8 @@ namespace IronLua.Tests
 
         public void LexerFailureTests(string exeFile, string snippet, string expect)
         {
-            CheckLuaInterpeter(exeFile);
-            bool xfail = TestContext.CurrentContext.Test.Properties.Contains("FailureCase");
+            CheckLuaInterpreter(exeFile);
+            bool xfail = TestContext.CurrentContext.Test.Properties.ContainsKey("FailureCase");
             //Console.WriteLine("snipet {0}", snippet);
             string actual = ExecuteLuaSnippet(exeFile, snippet, xfail);
             //Console.WriteLine("actual {0}", actual);
@@ -114,25 +114,25 @@ namespace IronLua.Tests
             Assert.That(actual, Is.EqualTo(expect));
         }
 
-        //[Test, TestCaseSource(typeof(TestDataSource), "LexerTestCases")]
+        //[Test, TestCaseSource(typeof(TestDataSource), nameof(TestDataSource.LexerTestCases))]
         public void LexerFailureTestsUnderLua50(string snippet, string expect)
         {
             LexerFailureTests(lua50, snippet, expect);
         }
 
-        //[Test, TestCaseSource(typeof(TestDataSource), "LexerTestCases")]
+        //[Test, TestCaseSource(typeof(TestDataSource), nameof(TestDataSource.LexerTestCases))]
         public void LexerFailureTestsUnderLua51(string snippet, string expect)
         {
             LexerFailureTests(lua51, snippet, expect);
         }
 
-        //[Test, TestCaseSource(typeof(TestDataSource), "LexerTestCases")]
+        //[Test, TestCaseSource(typeof(TestDataSource), nameof(TestDataSource.LexerTestCases))]
         public void LexerFailureTestsUnderLua52(string snippet, string expect)
         {
             LexerFailureTests(lua52, snippet, expect);
         }
         
-        [Test, TestCaseSource(typeof(TestDataSource), "LexerTestCases")]
+        [Test, TestCaseSource(typeof(TestDataSource), nameof(TestDataSource.LexerTestCases))]
         public void LexerErrorReportTests(string snippet, string expect)
         {
             bool mustfail = TestContext.CurrentContext.Test.Properties.Contains("FailureCase");

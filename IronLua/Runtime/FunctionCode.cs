@@ -7,6 +7,7 @@ using System.Linq.Expressions;
 using Microsoft.Scripting;
 using System.Threading;
 using System.Diagnostics;
+using System.Reflection;
 using Microsoft.Scripting.Interpreter;
 using Microsoft.Scripting.Ast;
 using Microsoft.Scripting.Generation;
@@ -249,7 +250,7 @@ namespace IronLua.Runtime
 
         internal object Call(CodeContext/*!*/ context)
         {
-            if (Target == null || (Target.GetMethodInfo() != null && Target.GetMethodInfo().DeclaringType == typeof(PythonCallTargets)))            
+            if (Target == null || (Target.GetMethodInfo() != null && Target.GetMethodInfo().DeclaringType == typeof(LuaCallTargets)))            
                 UpdateDelegate(context.Language, true);
             
             Func<CodeContext, CodeContext> classTarget = Target as Func<CodeContext, CodeContext>;

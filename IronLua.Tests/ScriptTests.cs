@@ -9,13 +9,16 @@ namespace IronLua.Tests
     public class ScriptTests
     {
         [Test]
-        [ExpectedException(typeof(LuaRuntimeException), ExpectedMessage = "Assertion failed")]
         public void ExecuteAssertFalse()
         {
-            Lua.CreateEngine().Execute("assert(false)");
+            Assert.Throws<LuaRuntimeException>(() =>
+                {
+                    Lua.CreateEngine().Execute("assert(false)");
+                })
+                .WithMessage("Assertion failed");
         }
 
-        [Test, TestCaseSource(typeof(ScriptSources), "GetTestCases")]
+        [Test, TestCaseSource(typeof(ScriptSources), nameof(ScriptSources.GetTestCases))]
         public void RunLuaScripts(string luaFile)
         {
             Lua.CreateEngine().ExecuteFile(luaFile);

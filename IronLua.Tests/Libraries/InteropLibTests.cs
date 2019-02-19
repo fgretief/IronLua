@@ -11,7 +11,7 @@ namespace IronLua.Tests
     {
         ScriptEngine engine;
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void PrepareEngine()
         {
             engine = Lua.CreateEngine();
@@ -191,7 +191,6 @@ host.Trigger('Argument')
         }
 
         [Test]
-        [ExpectedException(ExpectedException = typeof(LuaRuntimeException), ExpectedMessage = "could not find the member 'Method' on 'i'")]
         public void TestMissingMethod()
         {
             string code =
@@ -202,8 +201,8 @@ i = obj()
 assert(i,'Failed to instantiate object')
 i.Method()
 ";
-
-            engine.Execute(code);
+            Assert.Throws<LuaRuntimeException>(() => engine.Execute(code))
+                .WithMessage("could not find the member 'Method' on 'i'");
         }
 
         public struct TestStruct

@@ -28,7 +28,7 @@ namespace IronLua.Runtime
             : base(manager)
         {
             // TODO: options
-            if (options.ContainsKey("tracing"))
+            if (options?.ContainsKey("tracing") ?? false)
                 EnableTracing = options["tracing"] is bool && (bool)options["tracing"];
 
             InvariantCodeContext = new CodeContext(this);

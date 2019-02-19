@@ -14,7 +14,7 @@ namespace IronLua.Tests.Features
     {
         ScriptEngine engine;
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void PrepareEngine()
         {
             engine = Lua.CreateEngine();
@@ -30,11 +30,11 @@ namespace IronLua.Tests.Features
             Assert.That(error, Is.Empty);
         }
 
-        [Test, ExpectedException(typeof(LuaRuntimeException), ExpectedMessage = "could not find the variable 'fact'")]
+        [Test]
         public void FunctionBehaviour_RecursiveMissing()
         {
             string code =
-@"
+                @"
 local fact = function (n)
       if n == 0 then return 1
       else return n*fact(n-1)   -- buggy
@@ -44,8 +44,11 @@ local fact = function (n)
 return fact(10)
 ";
 
-            var result = engine.Execute(code);
-            Assert.That(result, Is.EqualTo(3628800));
+            Assert.Throws<LuaRuntimeException>(() =>
+            {
+                var result = engine.Execute(code);
+                Assert.That(result, Is.EqualTo(3628800));
+            }).WithMessage("could not find the variable 'fact'");
         }
 
         [Test]

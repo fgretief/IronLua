@@ -14,7 +14,7 @@ namespace IronLua.Tests.Features
 
         ScriptEngine engine;
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void PrepareEngine()
         {
             engine = Lua.CreateEngine();

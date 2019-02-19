@@ -14,7 +14,7 @@ namespace IronLua.Tests.Features
     {
         ScriptEngine engine;
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void PrepareEngine()
         {
             engine = Lua.CreateEngine();
@@ -29,10 +29,11 @@ namespace IronLua.Tests.Features
             Assert.That(error, Is.Empty);
         }
 
-        [Test, ExpectedException(ExpectedException = typeof(LuaErrorException), ExpectedMessage = "error message")]
+        [Test]
         public void TestErrors_Throw()
         {
-            engine.Execute("error('error message')");
+            Assert.Throws<LuaErrorException>(() => engine.Execute("error('error message')"))
+                .WithMessage("(chunk):1:error message");
         }
 
         [Test]
@@ -65,9 +66,9 @@ return x";
             }
             catch (LuaErrorException ex)
             {
-                Assert.That(ex.StackLevel == 1);
-                Assert.That(ex.Message == "error message");
-                Assert.That(ex.Result == "error message");
+                Assert.That(ex.StackLevel, Is.EqualTo(1));
+                Assert.That(ex.Message, Is.EqualTo("error message"));
+                Assert.That(ex.Result, Is.EqualTo("error message"));
 
                 return;
             }

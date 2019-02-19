@@ -17,9 +17,8 @@ namespace IronLua.Tests
         {
             get
             {
-                //return Environment.CurrentDirectory;
-
-                var temp = Environment.CurrentDirectory.Split('\\').Reverse().Skip(2).Reverse();
+                var path = TestContext.CurrentContext.TestDirectory;
+                var temp = path.Split('\\').Reverse().Skip(3).Reverse();
                 string o = "";
                 foreach (var t in temp)
                     o += t + "\\";
@@ -143,6 +142,12 @@ namespace IronLua.Tests
         public static dynamic ExecuteTestCode(this ScriptEngine engine, string code, ScriptScope scope, out string outStr, out string errStr)
         {
             return CaptureOutput(engine, e => e.Execute(code, scope), out outStr, out errStr);
+        }
+
+        public static Exception WithMessage(this Exception self, string expectedMessage)
+        {
+            Assert.That(self.Message, Is.EqualTo(expectedMessage));
+            return self;
         }
     }
 

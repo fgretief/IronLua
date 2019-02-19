@@ -16,7 +16,7 @@ namespace IronLua.Tests.Features
     {
         ScriptEngine engine;
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void PrepareEngine()
         {
             engine = Lua.CreateEngine();
@@ -178,92 +178,24 @@ t['z'] = t.y";
 
         #region Syntax Exception tests
 
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "unexpected symbol near ';' (line 1, column 7)")]
-        public void TestTables_ParserMsg1a()
-        {
-            engine.Execute("t = { ; }");
-        }
+        [TestCase("t = { ; }", "unexpected symbol near ';' (line 1, column 7)", TestName = "TestTables_ParserMsg1a")]
+        [TestCase("t = { , }", "unexpected symbol near ',' (line 1, column 7)", TestName = "TestTables_ParserMsg1b")]
 
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "unexpected symbol near ',' (line 1, column 7)")]
-        public void TestTables_ParserMsg1b()
-        {
-            engine.Execute("t = { , }");
-        }
+        [TestCase("t = { 1 2 }", "'}' expected near '2' (line 1, column 9)", TestName = "TestTables_ParserMsg2")]
 
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException), 
-            ExpectedMessage = "'}' expected near '2' (line 1, column 9)")]
-        public void TestTables_ParserMsg2()
-        {
-            engine.Execute("t = { 1 2 }");
-        }
+        [TestCase("t = { 1\r\n2 }", "'}' expected (to close '{' at line 1) near '2' (line 2, column 1)", TestName = "TestTables_ParserMsg3")]
 
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "'}' expected (to close '{' at line 1) near '2' (line 2, column 1)")]
-        public void TestTables_ParserMsg3()
-        {
-            engine.Execute("t = { 1\r\n2 }");
-        }
+        [TestCase("t = { [ = 2 }", "unexpected symbol near '=' (line 1, column 9)", TestName = "TestTables_ParserMsg4a")]
+        [TestCase("t = { [1 = 2 }", "']' expected near '=' (line 1, column 10)", TestName = "TestTables_ParserMsg4b")]
+        [TestCase("t = { [1] = }", "'=' expected near '2' (line 1, column 11)", TestName = "TestTables_ParserMsg4c")]
+        [TestCase("t = { [1] = , }", "unexpected symbol near ',' (line 1, column 13)", TestName = "TestTables_ParserMsg4e")]
 
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "unexpected symbol near '=' (line 1, column 9)")]
-        public void TestTables_ParserMsg4a()
+        [TestCase("t = { a = }", "unexpected symbol near '}' (line 1, column 11)", TestName = "TestTables_ParserMsg5")]
+        [TestCase("t = { f() = 3, 2, 1 }", "'}' expected near '=' (line 1, column 11)", TestName = "TestTables_ParserMsg6")]
+        public void TestTables_Errors(string chunk, string message)
         {
-            engine.Execute("t = { [ = 2 }");
-        }
-
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "']' expected near '=' (line 1, column 10)")]
-        public void TestTables_ParserMsg4b()
-        {
-            engine.Execute("t = { [1 = 2 }");
-        }
-
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "'=' expected near '2' (line 1, column 11)")]
-        public void TestTables_ParserMsg4c()
-        {
-            engine.Execute("t = { [1] 2 }");
-        }
-
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "unexpected symbol near '}' (line 1, column 13)")]
-        public void TestTables_ParserMsg4d()
-        {
-            engine.Execute("t = { [1] = }");
-        }
-
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "unexpected symbol near ',' (line 1, column 13)")]
-        public void TestTables_ParserMsg4e()
-        {
-            engine.Execute("t = { [1] = , }");
-        }
-
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "unexpected symbol near '}' (line 1, column 11)")]
-        public void TestTables_ParserMsg5b()
-        {
-            engine.Execute("t = { a = }");
-        }
-
-        [Test]
-        [ExpectedException(typeof(SyntaxErrorException),
-            ExpectedMessage = "'}' expected near '=' (line 1, column 11)")]
-        public void TestTables_ParserMsg6()
-        {
-            engine.Execute("t = { f() = 3, 2, 1 }");
+            Assert.Throws<SyntaxErrorException>(() => engine.Execute(chunk))
+                .WithMessage(message);
         }
 
         #endregion
