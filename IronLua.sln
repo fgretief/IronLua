@@ -7,9 +7,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample", "Sample\Sample.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronLua.Tests", "IronLua.Tests\IronLua.Tests.csproj", "{35740D81-76C1-46C5-A06A-74BE15FB6F83}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ilua", "ilua\ilua.csproj", "{58252A33-C6C1-4905-BE73-62E95D77C237}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronLua.Console", "IronLua.Console\IronLua.Console.csproj", "{58252A33-C6C1-4905-BE73-62E95D77C237}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "iluaw", "iluaw\iluaw.csproj", "{1CCB684B-3BDF-4204-98DD-58865C198EE5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronLua.Windows", "IronLua.Windows\IronLua.Windows.csproj", "{1CCB684B-3BDF-4204-98DD-58865C198EE5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
