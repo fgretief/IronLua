@@ -3,7 +3,7 @@
   <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <id>IronLua</id>
     <title>IronLua</title>
-    <version>0.1.0</version>
+    <version>$version$</version>
     <authors>IronLua Contributors</authors>
     <owners>IronLua Community</owners>
     <projectUrl>https://github.com/SPARTAN563/IronLua/wiki</projectUrl>
@@ -12,9 +12,14 @@
     <summary>IronLua is an open-source implementation of the Lua programming language which is tightly integrated with the .NET Framework.</summary>
     <language>en-US</language>
     <tags>ironlua lua dlr scripting dynamic</tags>
+    <dependencies>
+      <group targetFramework="net45">
+        <dependency id="DynamicLanguageRuntime" version="[1.2.1]" />
+      </group>
+    </dependencies>
   </metadata>
   <files>
-    <file src="Platforms\**\*.*" target="lib" />
-    <file src="ilua*.exe" target="tools" />
+    <file src="Src\IronLua\bin\Debug\net45\IronLua.dll" target="lib/net45/IronLua.dll" />
+    <file src="Src\IronLua.Console\bin\Debug\net45\ilua.exe" target="tools" />
   </files>
 </package>
