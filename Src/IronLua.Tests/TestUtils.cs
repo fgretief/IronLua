@@ -10,15 +10,12 @@ namespace IronLua.Tests
 {
     public static class TestUtils
     {
-        //public static readonly string ProjectBasePath = @"F:\workspace\DLR\IronLua-github";
-        //public static readonly string ProjectBasePath = @"W:\dlr\IronLua-github";
-
         public static string ProjectBasePath
         {
             get
             {
                 var path = TestContext.CurrentContext.TestDirectory;
-                var temp = path.Split('\\').Reverse().Skip(3).Reverse();
+                var temp = path.Split('\\').Reverse().Skip(4).Reverse();
                 string o = "";
                 foreach (var t in temp)
                     o += t + "\\";
@@ -53,7 +50,7 @@ namespace IronLua.Tests
         public static string Repeat(this char c, int n)
         {
             if (n <= 0)
-                return String.Empty;
+                return string.Empty;
 
             var sb = new StringBuilder(n);
             for (int i = 0; i < n; ++i)
@@ -66,7 +63,7 @@ namespace IronLua.Tests
         public static string Repeat(this string s, int n)
         {
             if (n <= 0)
-                return String.Empty;
+                return string.Empty;
 
             var sb = new StringBuilder(n * s.Length);
             for (int i = 0; i < n; ++i)

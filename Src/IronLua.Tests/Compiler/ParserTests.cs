@@ -58,13 +58,19 @@ namespace IronLua.Tests.Compiler
             });
         }
 
-        [Test, TestCaseSource(typeof(LuaTestSuiteSource), "Lua52TestCases")]
+        [Test, TestCaseSource(typeof(LuaTestSuiteSource), nameof(LuaTestSuiteSource.Lua53TestCases))]
+        public void ParserTestOnLua53TestSuite(string luaFile)
+        {
+            ParserErrorReportTests(luaFile, useLua52: true);
+        }
+
+        [Test, TestCaseSource(typeof(LuaTestSuiteSource), nameof(LuaTestSuiteSource.Lua52TestCases))]
         public void ParserTestOnLua52TestSuite(string luaFile)
         {
             ParserErrorReportTests(luaFile, useLua52:true);
         }
 
-        [Test, TestCaseSource(typeof(LuaTestSuiteSource), "Lua51TestCases")]
+        [Test, TestCaseSource(typeof(LuaTestSuiteSource), nameof(LuaTestSuiteSource.Lua51TestCases))]
         public void ParserTestOnLua51TestSuite(string luaFile)
         {
             ParserErrorReportTests(luaFile, useLua52:false);
@@ -72,6 +78,7 @@ namespace IronLua.Tests.Compiler
 
         public static class LuaTestSuiteSource
         {
+            public static readonly string Lua53TestSuitePath = TestUtils.GetTestPath(@"IronLua.Tests\\Scripts\\lua-5.3.4-tests");
             public static readonly string Lua52TestSuitePath = TestUtils.GetTestPath(@"IronLua.Tests\\Scripts\\lua-5.2.1-tests");
             public static readonly string Lua51TestSuitePath = TestUtils.GetTestPath(@"IronLua.Tests\\Scripts\\lua-5.1-tests");
 
@@ -111,6 +118,11 @@ namespace IronLua.Tests.Compiler
             {
                 return LuaTestSuiteFiles
                     .Select(f => new TestCaseData(Path.Combine(path, f)).SetName(f));
+            }
+
+            public static IEnumerable<TestCaseData> Lua53TestCases()
+            {
+                return LuaTestCases(Lua53TestSuitePath);
             }
 
             public static IEnumerable<TestCaseData> Lua52TestCases()
