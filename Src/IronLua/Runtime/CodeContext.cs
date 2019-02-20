@@ -288,7 +288,7 @@ namespace IronLua.Runtime
 
         //Holds the number of global variables defined within scopes, 
         //thus offsetting the expected variable access stack size by this value
-        private int accessStackSizeOffset = 0;
+        //private int accessStackSizeOffset = 0;
 
         internal VariableAccess LastVariableAccess
         { get { return variableAccessStack.Count > 0 ? variableAccessStack.Peek() : null; } }

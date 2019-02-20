@@ -21,7 +21,7 @@ namespace IronLua.Compiler.Expressions
         /// <param name="upScope">The scope in which the function will execute, storing up values (which persist between calls)</param>
         public static Expr FunctionScope(CodeContext context, LuaScope evalScope, LuaScope upScope, IEnumerable<string> identifiers, Expr body)
         {
-            return body;
+            //return body;
             return new FunctionScopeExpression(context, evalScope, upScope, identifiers, body).Reduce();
         }
 
@@ -34,7 +34,7 @@ namespace IronLua.Compiler.Expressions
         /// <param name="upScope">The scope in which the function will execute, storing up values (which persist between calls)</param>
         public static Expr FunctionScope(Expr context, LuaScope evalScope, LuaScope upScope, string identifier, Expr body)
         {
-            return body;
+            //return body;
             return new FunctionScopeExpression(context, evalScope, upScope, identifier, body).Reduce();
         }
         
@@ -47,7 +47,7 @@ namespace IronLua.Compiler.Expressions
         /// <param name="upScope">The scope in which the function will execute, storing up values (which persist between calls)</param>
         public static Expr FunctionScope(Expr context, string identifier, Expr body)
         {
-            return body;
+            //return body;
             return new FunctionScopeExpression(context, identifier, body).Reduce();
         }
         
@@ -58,7 +58,7 @@ namespace IronLua.Compiler.Expressions
         /// </summary>
         public static Expr FunctionDefinitionExpression(CodeContext context, LuaScope scope, IEnumerable<string> identifiers, LambdaExpression function)
         {
-            return function;
+            //return function;
             return new FunctionDefinitionExpression(context, scope, identifiers, function).Reduce();
         }
 
@@ -67,7 +67,7 @@ namespace IronLua.Compiler.Expressions
         /// </summary>
         public static Expr SourceSpan(SymbolDocumentInfo document, SourceSpan span, Expr body)
         {
-            return body;
+            //return body;
             if (document == null)
                 return body;
             return new SpansExpression(document, span, body).Reduce();
@@ -78,7 +78,7 @@ namespace IronLua.Compiler.Expressions
         /// </summary>
         public static Expr ExecutionContext(CodeContext context, Expression scopeVariable, SourceUnit source, Expression body)
         {
-            return body;
+            //return body;
             return new ExecutionContextExpression(context, scopeVariable, source, body).Reduce();
         }
 
@@ -87,7 +87,7 @@ namespace IronLua.Compiler.Expressions
         /// </summary>
         public static Expr Scope(CodeContext context, LuaScope scope, Expression body)
         {
-            return body;
+            //return body;
             return new ScopeExpression(context, scope, body).Reduce();
         }
         
@@ -96,7 +96,7 @@ namespace IronLua.Compiler.Expressions
         /// </summary>
         public static Expr VariableAccess(CodeContext context, Expression variable, VariableAccess access)
         {
-            return variable;
+            //return variable;
             return new VariableAccessExpression(context, variable, access).Reduce();
         }
     }

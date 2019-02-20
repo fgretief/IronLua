@@ -27,7 +27,7 @@ namespace IronLua.Compiler
         readonly Dictionary<string, LabelTarget> labels;
         readonly LambdaBuilder builder;
         
-        static int hiddenId;
+        //static int hiddenId;
 
         public bool IsRoot { get { return parent == null; } }
 

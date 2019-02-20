@@ -17,6 +17,9 @@
     <Compile Remove="CurrentVersion.Generated.cs" />
     <Compile Remove="CurrentVersion.Template.cs" />
     <Compile Remove="Runtime\Context.cs" />
+    <Compile Remove="Runtime\FunctionCode.cs" />
+    <Compile Remove="Runtime\LuaTracebackListener.cs" />
+    <Compile Remove="Runtime\Traceback.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CurrentVersion.Generated.cs">

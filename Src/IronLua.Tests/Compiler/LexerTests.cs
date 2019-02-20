@@ -135,7 +135,7 @@ namespace IronLua.Tests
         [Test, TestCaseSource(typeof(TestDataSource), nameof(TestDataSource.LexerTestCases))]
         public void LexerErrorReportTests(string snippet, string expect)
         {
-            bool mustfail = TestContext.CurrentContext.Test.Properties.Contains("FailureCase");
+            bool mustfail = TestContext.CurrentContext.Test.Properties.ContainsKey("FailureCase");
 
             var tokenizer = new Tokenizer(ErrorSink.Default, new LuaCompilerOptions() { SkipFirstLine = true });
 

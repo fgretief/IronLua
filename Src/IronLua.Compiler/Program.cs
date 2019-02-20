@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
 
-namespace IronLua
+namespace IronLua.Compiler
 {
-    static class Program
+    class Program
     {
         /// <summary>
         /// The main entry point for the application.
@@ -23,7 +23,7 @@ namespace IronLua
 
         public int Run(string[] args)
         {
-            Console.WriteLine("luac: no input files given");
+            Console.WriteLine("iluac: no input files given");
             PrintUsage();
             return 0;
         }
@@ -42,12 +42,12 @@ namespace IronLua
         public static void PrintUsage()
         {
             Console.WriteLine(@"
-usage: luac [options] [filenames].
+usage: iluac [options] [filenames].
 Available options are:
   -        process stdin
   -c       show command line
   -l       list
-  -o name  output to file 'name' (default is "luac.out")
+  -o name  output to file 'name' (default is ""luac.out"")
   -os      output to stdout
   -d dir   output package tree to directory `dir' (default is "".\"")
   -r dir   root dir of source packages (including trailing `')
