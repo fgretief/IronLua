@@ -15,6 +15,9 @@ namespace Sample
             var engine = Lua.CreateEngine();
 
             var context = engine.GetLuaContext();
+            //context.SetGlobalVariable("a", 10);
+            //context.SetGlobalConstant("b", 10);
+
             var scope = engine.CreateScope();
 
             string code =
