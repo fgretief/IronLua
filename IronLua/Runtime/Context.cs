@@ -25,7 +25,7 @@ namespace IronLua.Runtime
         {
             LuaContext = luaContext;
 
-            DynamicCache = new DynamicCache(this);
+            DynamicCache = new DynamicCache(this.LuaContext);
 
             SetupLibraries();
 

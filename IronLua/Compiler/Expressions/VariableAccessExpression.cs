@@ -39,7 +39,7 @@ namespace IronLua.Compiler.Expressions
             }
         }
 
-        public Expression Variable
+        public new Expression Variable
         {
             get
             {

@@ -25,8 +25,8 @@ namespace IronLua
                         temp = e.Current;
                         first = false;
                     }
-                    else                    
-                        temp = merger(temp, e.Current);                    
+                    else
+                        temp = merger(temp, e.Current);
                 }
             }
 
