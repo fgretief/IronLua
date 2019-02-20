@@ -49,7 +49,7 @@ namespace IronLua.Compiler.Parsing
         
         public LuaSyntaxException SyntaxException(string format, params object[] args)
         {            
-            return SyntaxException(System.String.Format(format, args));
+            return SyntaxException(string.Format(format, args));
         }
 
         public SourceUnit SourceUnit
@@ -278,7 +278,7 @@ namespace IronLua.Compiler.Parsing
             }
         }
 
-        /* Count amount of continous '=' */
+        /* Count amount of continuous '=' */
         int CountEquals()
         {
             int count = 0;
@@ -342,6 +342,8 @@ namespace IronLua.Compiler.Parsing
                 case '*':
                     return input.Output(Symbol.Star);
                 case '/':
+                    if (input.Current == '/')
+                        return input.Advance().Output(Symbol.SlashSlash);
                     return input.Output(Symbol.Slash);
                 case '%':
                     return input.Output(Symbol.Percent);
@@ -350,13 +352,25 @@ namespace IronLua.Compiler.Parsing
                 case '#':
                     return input.Output(Symbol.Hash);
                 case '~':
-                    return input.Current == '=' ? LongPunctuation(c) : input.Output(Symbol.TildeEqual);
+                    if (input.Current == '=')
+                        return input.Advance().Output(Symbol.TildeEqual);
+                    return input.Output(Symbol.Tilde);
                 case '<':
-                    return input.Current == '=' ? LongPunctuation(c) : input.Output(Symbol.Less);
+                    if (input.Current == '<')
+                        return input.Advance().Output(Symbol.LessLess);
+                    if (input.Current == '=')
+                        return input.Advance().Output(Symbol.LessEqual);
+                    return input.Output(Symbol.Less);
                 case '>':
-                    return input.Current == '=' ? LongPunctuation(c) : input.Output(Symbol.Greater);
+                    if (input.Current == '>')
+                        return input.Advance().Output(Symbol.GreaterGreater);
+                    if (input.Current == '=')
+                        return input.Advance().Output(Symbol.GreaterEqual);
+                    return input.Output(Symbol.Greater);
                 case '=':
-                    return input.Current == '=' ? LongPunctuation(c) : input.Output(Symbol.Equal);
+                    if (input.Current == '=')
+                        return input.Advance().Output(Symbol.EqualEqual);
+                    return input.Output(Symbol.Equal);
                 case '(':
                     return input.Output(Symbol.LeftParen);
                 case ')':
@@ -376,7 +390,19 @@ namespace IronLua.Compiler.Parsing
                 case ',':
                     return input.Output(Symbol.Comma);
                 case '.':
-                    return input.Current == '.' ? LongPunctuation(c) : input.Output(Symbol.Dot);
+                    if (input.Current == '.')
+                    {
+                        if (input.Advance().Current == '.')
+                        {
+                            return input.Advance().Output(Symbol.DotDotDot);
+                        }
+                        return input.Output(Symbol.DotDot);
+                    }
+                    return input.Output(Symbol.Dot);
+                case '&':
+                    return input.Output(Symbol.Ampersand);
+                case '|':
+                    return input.Output(Symbol.VerticalBar);
                 default:
                     throw SyntaxException(ExceptionMessage.UNKNOWN_PUNCTUATION, c);
             }
@@ -385,29 +411,33 @@ namespace IronLua.Compiler.Parsing
         Token LongPunctuation(char c1)
         {
             char c2 = input.Current;
-            input.Advance();
 
             switch(c1)
             {
+                case '/':
+                    if (c2 == '/') return input.Advance().Output(Symbol.SlashSlash);
+                    break;
                 case '~':
-                    if (c2 == '=') return input.Output(Symbol.TildeEqual);
+                    if (c2 == '=') return input.Advance().Output(Symbol.TildeEqual);
                     break;
                 case '<':
-                    if (c2 == '=') return input.Output(Symbol.LessEqual);
+                    if (c2 == '=') return input.Advance().Output(Symbol.LessEqual);
+                    if (c2 == '<') return input.Advance().Output(Symbol.LessLess);
                     break;
                 case '>':
-                    if (c2 == '=') return input.Output(Symbol.GreaterEqual);
+                    if (c2 == '=') return input.Advance().Output(Symbol.GreaterEqual);
+                    if (c2 == '>') return input.Advance().Output(Symbol.GreaterGreater);
                     break;
                 case '=':
-                    if (c2 == '=') return input.Output(Symbol.EqualEqual);
+                    if (c2 == '=') return input.Advance().Output(Symbol.EqualEqual);
                     break;
                 case '.':
                     if (c2 == '.')
                     {
-                        if (input.Current == '.')
+                        var c3 = input.Advance().Current;
+                        if (c3 == '.')
                         {
-                            input.Advance();
-                            return input.Output(Symbol.DotDotDot);
+                            return input.Advance().Output(Symbol.DotDotDot);
                         }
                         return input.Output(Symbol.DotDot);
                     }

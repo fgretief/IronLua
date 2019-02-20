@@ -14,8 +14,14 @@ namespace IronLua.Compiler.Ast
         Add,
         Subtract,
         Multiply,
-        Divide,
+        Divide, //  float division
+        IntDivide, // floor division
         Mod,
-        Power
+        Power,
+        BitwiseAnd,
+        BitwiseOr,
+        BitwiseXor,
+        BitwiseLeftShift,
+        BitwiseRightShift
     }
 }

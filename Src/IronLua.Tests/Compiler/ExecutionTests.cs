@@ -11,11 +11,12 @@ namespace IronLua.Tests.Compiler
     {
         // See ParserTest class for documentation
 
-        public void ExecuteLuaTestSuite(string testCaseFile, bool useLua52)
+        public void ExecuteLuaTestSuite(string testCaseFile, bool useLua52, bool useLua53 = false)
         {
             var options = new Dictionary<string, object>()
             { 
                 { "UseLua52Features", useLua52 }, // TODO: need to make use of these options inside CreateEngine
+                { "UseLua53Features", useLua53 }, // ditto
             };
             var engine = Lua.CreateEngine(options);
 
@@ -30,13 +31,19 @@ namespace IronLua.Tests.Compiler
             });
         }
 
-        [Test, TestCaseSource(typeof(ParserTests.LuaTestSuiteSource), "Lua52TestCases")]
+        [Test, TestCaseSource(typeof(ParserTests.LuaTestSuiteSource), nameof(ParserTests.LuaTestSuiteSource.Lua53TestCases))]
+        public void ExcuteTestOnLua53TestSuite(string luaFile)
+        {
+            ExecuteLuaTestSuite(luaFile, useLua52:true, useLua53:true);
+        }
+
+        [Test, TestCaseSource(typeof(ParserTests.LuaTestSuiteSource), nameof(ParserTests.LuaTestSuiteSource.Lua52TestCases))]
         public void ExcuteTestOnLua52TestSuite(string luaFile)
         {
             ExecuteLuaTestSuite(luaFile, useLua52:true);
         }
 
-        //[Test, TestCaseSource(typeof(ParserTests.LuaTestSuiteSource), "Lua51TestCases")]
+        [Test, TestCaseSource(typeof(ParserTests.LuaTestSuiteSource), nameof(ParserTests.LuaTestSuiteSource.Lua51TestCases))]
         public void ExcuteTestOnLua51TestSuite(string luaFile)
         {
             ExecuteLuaTestSuite(luaFile, useLua52:false);

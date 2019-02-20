@@ -63,7 +63,7 @@ namespace IronLua.Compiler.Parsing
         {
             ContractUtils.RequiresNotNull(sourceReader, "sourceReader");
             ContractUtils.RequiresNotNull(sourceUnit, "sourceUnit");
-            
+
             _lastTokenSpan = SourceSpan.Invalid;
             _lastTokenValue = null;
 
@@ -72,7 +72,7 @@ namespace IronLua.Compiler.Parsing
 
             _buffer = new TokenizerBuffer(sourceReader, initialLocation, _options.InitialBufferCapacity, _options.MultiEolns);
         }
-        
+
         internal bool IsParserToken(Symbol symbol)
         {
             switch (symbol)
@@ -212,7 +212,7 @@ namespace IronLua.Compiler.Parsing
             else
             {
                 _buffer.MarkSingleLineTokenEnd();
-                return ReportError(1, "invalid character '{0}'", (char)current);                
+                return ReportError(1, "invalid character '{0}'", (char)current);
             }
         }
 
@@ -229,6 +229,8 @@ namespace IronLua.Compiler.Parsing
                 case '*':
                     return MarkTokenEnd(Symbol.Star);
                 case '/':
+                    if (_options.UseLua53Features && ConsumeOne('/'))
+                        return MarkTokenEnd(Symbol.SlashSlash);
                     return MarkTokenEnd(Symbol.Slash);
                 case '%':
                     return MarkTokenEnd(Symbol.Percent);
@@ -258,21 +260,25 @@ namespace IronLua.Compiler.Parsing
                 case ',':
                     return MarkTokenEnd(Symbol.Comma);
                 case '~':
-                    return ConsumeOne('=')
-                        ? MarkTokenEnd(Symbol.TildeEqual)
-                        : MarkTokenEnd(Symbol.Tilde);
+                    if (ConsumeOne('='))
+                        return MarkTokenEnd(Symbol.TildeEqual);
+                    return MarkTokenEnd(Symbol.Tilde);
                 case '<':
-                    return ConsumeOne('=')
-                        ? MarkTokenEnd(Symbol.LessEqual)
-                        : MarkTokenEnd(Symbol.Less);
+                    if (ConsumeOne('='))
+                        return MarkTokenEnd(Symbol.LessEqual);
+                    if (_options.UseLua53Features && ConsumeOne('<'))
+                        return MarkTokenEnd(Symbol.LessLess);
+                    return MarkTokenEnd(Symbol.Less);
                 case '>':
-                    return ConsumeOne('=')
-                        ? MarkTokenEnd(Symbol.GreaterEqual)
-                        : MarkTokenEnd(Symbol.Greater);
+                    if (ConsumeOne('='))
+                        return MarkTokenEnd(Symbol.GreaterEqual);
+                    if (_options.UseLua53Features && ConsumeOne('>'))
+                        return MarkTokenEnd(Symbol.GreaterGreater);
+                    return MarkTokenEnd(Symbol.Greater);
                 case '=':
-                    return ConsumeOne('=')
-                        ? MarkTokenEnd(Symbol.EqualEqual)
-                        : MarkTokenEnd(Symbol.Equal);
+                    if (ConsumeOne('='))
+                        return MarkTokenEnd(Symbol.EqualEqual);
+                    return MarkTokenEnd(Symbol.Equal);
                 case '.':
                     return ConsumeOne('.')
                         ? ConsumeOne('.')
@@ -282,9 +288,13 @@ namespace IronLua.Compiler.Parsing
                             ? ScanNumericLiteral(c)
                             : MarkTokenEnd(Symbol.Dot);
                 case ':':
-                    return _options.UseLua52Features && ConsumeOne(':')
-                        ? MarkTokenEnd(Symbol.ColonColon)
-                        : MarkTokenEnd(Symbol.Colon);
+                    if (_options.UseLua52Features && ConsumeOne(':'))
+                        return MarkTokenEnd(Symbol.ColonColon);
+                    return MarkTokenEnd(Symbol.Colon);
+                case '&' when _options.UseLua53Features:
+                    return MarkTokenEnd(Symbol.Ampersand);
+                case '|' when _options.UseLua53Features:
+                    return MarkTokenEnd(Symbol.VerticalBar);
                 default:
                     throw Assert.Unreachable;
             }
@@ -456,7 +466,7 @@ namespace IronLua.Compiler.Parsing
                     case TokenizerBuffer.EndOfFile:
                         _buffer.MarkMultiLineTokenEnd();
                         return ReportError(6, "invalid long {0} delimiter at '{1}'",
-                            isComment ? "comment" : "string", _buffer.GetTokenString());                        
+                            isComment ? "comment" : "string", _buffer.GetTokenString());
 
                     case '\r': // need to replace \r\n sequence into \n ones
                         if (Peek() == '\n')
@@ -873,6 +883,8 @@ namespace IronLua.Compiler.Parsing
                 case ':':
                 case ',':
                 case '.':
+                case '&': // Lua 5.3: bitwise AND
+                case '|': // Lua 5.3: bitwise OR
                     return true;
                 default:
                     return false;

@@ -19,7 +19,8 @@ namespace IronLua.Compiler.Parsing
                 {
                     {Symbol.Minus, UnaryOp.Negate},
                     {Symbol.Not,   UnaryOp.Not},
-                    {Symbol.Hash,  UnaryOp.Length}
+                    {Symbol.Hash,  UnaryOp.Length},
+                    {Symbol.Tilde, UnaryOp.BitwiseNot}
                 };
 
         static readonly Dictionary<Symbol, BinaryOp> BinaryOps =
@@ -38,8 +39,14 @@ namespace IronLua.Compiler.Parsing
                     {Symbol.Minus,        BinaryOp.Subtract},
                     {Symbol.Star,         BinaryOp.Multiply},
                     {Symbol.Slash,        BinaryOp.Divide},
+                    {Symbol.SlashSlash,   BinaryOp.IntDivide},
                     {Symbol.Percent,      BinaryOp.Mod},
-                    {Symbol.Caret,        BinaryOp.Power}
+                    {Symbol.Caret,        BinaryOp.Power},
+                    {Symbol.Ampersand,    BinaryOp.BitwiseAnd},
+                    {Symbol.VerticalBar,  BinaryOp.BitwiseOr},
+                    {Symbol.Tilde,        BinaryOp.BitwiseXor},
+                    {Symbol.LessLess,     BinaryOp.BitwiseLeftShift},
+                    {Symbol.GreaterGreater, BinaryOp.BitwiseRightShift}
                 };
 
         static readonly Dictionary<BinaryOp, Tuple<int, int>> BinaryOpPriorities =
@@ -53,13 +60,22 @@ namespace IronLua.Compiler.Parsing
                     {BinaryOp.GreaterEqual, new Tuple<int, int>(3, 3)},
                     {BinaryOp.NotEqual,     new Tuple<int, int>(3, 3)},
                     {BinaryOp.Equal,        new Tuple<int, int>(3, 3)},
-                    {BinaryOp.Concat,       new Tuple<int, int>(5, 4)}, // Left associative
-                    {BinaryOp.Add,          new Tuple<int, int>(6, 6)},
-                    {BinaryOp.Subtract,     new Tuple<int, int>(6, 6)},
-                    {BinaryOp.Multiply,     new Tuple<int, int>(7, 7)},
-                    {BinaryOp.Divide,       new Tuple<int, int>(7, 7)},
-                    {BinaryOp.Mod,          new Tuple<int, int>(7, 7)},
-                    {BinaryOp.Power,        new Tuple<int, int>(9, 8)}  // Left associative
+
+                    {BinaryOp.BitwiseOr,    new Tuple<int, int>(4, 4)},
+                    {BinaryOp.BitwiseXor,   new Tuple<int, int>(5, 5)},
+                    {BinaryOp.BitwiseAnd,   new Tuple<int, int>(6, 6)},
+                    {BinaryOp.BitwiseLeftShift, new Tuple<int, int>(7, 7)},
+                    {BinaryOp.BitwiseRightShift, new Tuple<int, int>(7, 7)},
+
+                    {BinaryOp.Concat,       new Tuple<int, int>(9, 8)}, // Right associative
+
+                    {BinaryOp.Add,          new Tuple<int, int>(10, 10)},
+                    {BinaryOp.Subtract,     new Tuple<int, int>(10, 10)},
+                    {BinaryOp.Multiply,     new Tuple<int, int>(11, 11)},
+                    {BinaryOp.Divide,       new Tuple<int, int>(11, 11)},
+                    {BinaryOp.IntDivide,    new Tuple<int, int>(11, 11)},
+                    {BinaryOp.Mod,          new Tuple<int, int>(11, 11)},
+                    {BinaryOp.Power,        new Tuple<int, int>(13, 12)}  // Right associative
                 };
 
         private readonly ILexer _lexer;
@@ -319,9 +335,9 @@ namespace IronLua.Compiler.Parsing
             var number = token.Lexeme;
 
             double result;
-            bool successful = number.StartsWith("0x") || number.StartsWith("0X") ?
-                NumberUtil.TryParseHexNumber(number.Substring(2), true, out result) :
-                NumberUtil.TryParseDecimalNumber(number, out result);
+            var successful = number.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                ? NumberUtil.TryParseHexNumber(number.Substring(2), true, out result)
+                : NumberUtil.TryParseDecimalNumber(number, out result);
 
             if (successful)
                 return new Expression.Number(result) { Span = token.Span };
@@ -336,7 +352,7 @@ namespace IronLua.Compiler.Parsing
 
                 if (b1 && b2)
                 {
-                    result = Math.Sign(v1) > 0 ? Double.PositiveInfinity : Double.NegativeInfinity;
+                    result = Math.Sign(v1) > 0 ? double.PositiveInfinity : double.NegativeInfinity;
                     return new Expression.Number(result) { Span = token.Span };
                 }
             }

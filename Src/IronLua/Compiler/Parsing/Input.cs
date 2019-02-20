@@ -84,16 +84,18 @@ namespace IronLua.Compiler.Parsing
             get { return buffer.ToString(); }
         }
 
-        public void Advance()
+        public Input Advance()
         {
             index += 1;
             Column = Column + 1;
+            return this;
         }
 
-        public void Back()
+        public Input Back()
         {
             index -= 1;
             Column = Column - 1;
+            return this;
         }
 
         public void StorePosition()

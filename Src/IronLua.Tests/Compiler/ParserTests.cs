@@ -32,7 +32,7 @@ namespace IronLua.Tests.Compiler
     [TestFixture]
     public class ParserTests
     {
-        public void ParserErrorReportTests(string luaFile, bool useLua52)
+        public void ParserErrorReportTests(string luaFile, bool useLua52, bool useLua53 = false)
         {
             var options = new LuaCompilerOptions()
             {
@@ -58,10 +58,37 @@ namespace IronLua.Tests.Compiler
             });
         }
 
+        [TestCase("assert((1 << (numbits - 1)) == math.mininteger)")]
+        [TestCase("assert(bit32.arshift(0x12345678, 1) == 0x12345678 // 2)")]
+        public void SimpleCodeSnippetTest(string code)
+        {
+            var options = new LuaCompilerOptions()
+            {
+                SkipFirstLine = true,
+                UseLua52Features = true,
+                UseLua53Features = true
+            };
+
+            var engine = Lua.CreateEngine();
+            var context = Lua.GetLuaContext(engine);
+            var sourceUnit = context.CreateSnippet(code, SourceCodeKind.SingleStatement);
+            var reader = sourceUnit.GetReader();
+
+            var tokenizer = new Tokenizer(ErrorSink.Default, options);
+            tokenizer.Initialize(null, reader, sourceUnit, SourceLocation.MinValue);
+            var parser = new Parser(tokenizer, tokenizer.ErrorSink, options);
+
+            TestUtils.AssertSyntaxError(() =>
+            {
+                var ast = parser.Parse();
+                Assert.That(ast, Is.Not.Null);
+            });
+        }
+
         [Test, TestCaseSource(typeof(LuaTestSuiteSource), nameof(LuaTestSuiteSource.Lua53TestCases))]
         public void ParserTestOnLua53TestSuite(string luaFile)
         {
-            ParserErrorReportTests(luaFile, useLua52: true);
+            ParserErrorReportTests(luaFile, useLua52:true, useLua53:true);
         }
 
         [Test, TestCaseSource(typeof(LuaTestSuiteSource), nameof(LuaTestSuiteSource.Lua52TestCases))]
@@ -79,7 +106,7 @@ namespace IronLua.Tests.Compiler
         public static class LuaTestSuiteSource
         {
             public static readonly string Lua53TestSuitePath = TestUtils.GetTestPath(@"IronLua.Tests\\Scripts\\lua-5.3.4-tests");
-            public static readonly string Lua52TestSuitePath = TestUtils.GetTestPath(@"IronLua.Tests\\Scripts\\lua-5.2.1-tests");
+            public static readonly string Lua52TestSuitePath = TestUtils.GetTestPath(@"IronLua.Tests\\Scripts\\lua-5.2.2-tests");
             public static readonly string Lua51TestSuitePath = TestUtils.GetTestPath(@"IronLua.Tests\\Scripts\\lua-5.1-tests");
 
             public static string[] LuaTestSuiteFiles = new[]
@@ -89,7 +116,7 @@ namespace IronLua.Tests.Compiler
                 "attrib.lua",
                 "big.lua",
                 "calls.lua",
-                "checktable.lua",
+                "checktable.lua", // not in Lua 5.3
                 "closure.lua",
                 "code.lua",
                 "constructs.lua",
@@ -108,10 +135,13 @@ namespace IronLua.Tests.Compiler
                 "strings.lua",
                 "vararg.lua",
                 "verybig.lua",
-                // Lua 5.2 specific files
+                // Lua 5.2, 5.3 specific files
                 "bitwise.lua",
                 "coroutine.lua",
                 "goto.lua",
+                // Lua 5.3 specific files
+                //"tpack.lua",
+                "utf8.lua"
             };
 
             public static IEnumerable<TestCaseData> LuaTestCases(string path)

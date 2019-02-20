@@ -40,6 +40,8 @@ namespace IronLua.Util
                 case ':':
                 case ',':
                 case '.':
+                case '&': // Lua 5.3: bitwise AND
+                case '|': // Lua 5.3: bitwise OR
                     return true;
                 default:
                     return false;

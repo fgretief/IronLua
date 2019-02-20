@@ -34,6 +34,7 @@ namespace IronLua.Compiler.Parsing
         Minus,
         Star,
         Slash,
+        SlashSlash, // Lua 5.3: Floor division
         Percent,
         Caret,
         Hash,
@@ -41,7 +42,9 @@ namespace IronLua.Compiler.Parsing
         EqualEqual,
         TildeEqual,
         LessEqual,
+        LessLess, // Lua 5.3: Bitwise Shift
         GreaterEqual,
+        GreaterGreater, // Lua 5.3: Bitwise Shift
         Less,
         Greater,
         Equal,
@@ -53,11 +56,13 @@ namespace IronLua.Compiler.Parsing
         RightBrack,
         SemiColon,
         Colon,
-        ColonColon,
+        ColonColon, // Lua 5.2 feature
         Comma,
         Dot,
         DotDot,
         DotDotDot,
+        Ampersand, // Lua 5.3: Bitwise AND
+        VerticalBar, // Lua 5.3: Bitwise OR
 
         // Literals
         Number,
@@ -110,6 +115,7 @@ namespace IronLua.Compiler.Parsing
                 {Symbol.Minus,        "-"},
                 {Symbol.Star,         "*"},
                 {Symbol.Slash,        "/"},
+                {Symbol.SlashSlash,   "//"},
                 {Symbol.Percent,      "%"},
                 {Symbol.Caret,        "^"},
                 {Symbol.Hash,         "#"},
@@ -119,8 +125,10 @@ namespace IronLua.Compiler.Parsing
                 {Symbol.TildeEqual,   "~="},
                 {Symbol.Less,         "<"},
                 {Symbol.LessEqual,    "<="},
+                {Symbol.LessLess,     ">>"},
                 {Symbol.Greater,      ">"},
                 {Symbol.GreaterEqual, ">="},
+                {Symbol.GreaterGreater, ">>"},
                 {Symbol.SemiColon,    ";"},
                 {Symbol.Colon,        ":"},
                 {Symbol.ColonColon,   "::"},
@@ -128,6 +136,8 @@ namespace IronLua.Compiler.Parsing
                 {Symbol.Dot,          "."},
                 {Symbol.DotDot,       ".."},
                 {Symbol.DotDotDot,    "..."},
+                {Symbol.Ampersand,    "&"},
+                {Symbol.VerticalBar,  "|"},
                 // Punctuations (matching)
                 {Symbol.LeftParen,    "("},
                 {Symbol.RightParen,   ")"},

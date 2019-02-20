@@ -38,6 +38,7 @@ namespace IronLua.Compiler
                     {BinaryOp.Subtract,     ExprType.Subtract},
                     {BinaryOp.Multiply,     ExprType.Multiply},
                     {BinaryOp.Divide,       ExprType.Divide},
+                    {BinaryOp.IntDivide,    ExprType.Divide},
                     {BinaryOp.Mod,          ExprType.Modulo},
                     {BinaryOp.Power,        ExprType.Power}
                 };

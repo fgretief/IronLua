@@ -38,6 +38,7 @@ namespace IronLua.Tests
         string lua50 = TestUtils.GetTestPath(@"libs\lua5.0.exe");
         string lua51 = TestUtils.GetTestPath(@"libs\lua5.1.exe");
         string lua52 = TestUtils.GetTestPath(@"libs\lua5.2.exe");
+        string lua53 = TestUtils.GetTestPath(@"libs\lua5.3.exe");
 
         public string ExecuteLuaSnippet(string exeFile, string snippet, bool giveStdErr = false)
         {

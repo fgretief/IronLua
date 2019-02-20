@@ -82,10 +82,11 @@ namespace IronLua.Tests
             catch (SyntaxErrorException ex)
             {
                 // Display a pretty picture of the syntax error exception
-                Console.WriteLine("Source File     : {0}", new Uri(ex.SourcePath));
-                Console.WriteLine("Source Location : {0}", ex.RawSpan);
-                Console.WriteLine("Source CodeLine : {0}", ex.GetCodeLine());
-                Console.WriteLine("Error {1,-9} : {0}^", Repeat('=', ex.Column - 1), ex.ErrorCode);
+                object src = File.Exists(ex.SourcePath) ? (object) new Uri(ex.SourcePath) : ex.SourcePath;
+                TestContext.WriteLine("Source File     : {0}", src);
+                TestContext.WriteLine("Source Location : {0}", ex.RawSpan);
+                TestContext.WriteLine("Source CodeLine : {0}", ex.GetCodeLine());
+                TestContext.WriteLine("Error {1,-9} : {0}^", Repeat('=', ex.Column - 1), ex.ErrorCode);
 
                 throw; // so test can fail
             }
