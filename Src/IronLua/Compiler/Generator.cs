@@ -617,7 +617,7 @@ namespace IronLua.Compiler
                     if (scope.TryGetLocal(variable.Identifier, out local))
                         return local;
 
-                    //return CreateGlobalGetMember(variable.Identifier, context.Language.DomainManager.Globals.Storage, CodeContext.GetLibraries(context), scope);
+                    return CreateGlobalGetMember(variable.Identifier, context.Language.DomainManager.Globals.Storage, CodeContext.GetLibraries(context), scope);
                     
                     //return Expr.Dynamic(context.CreateGetMemberBinder(variable.Identifier, false),
                     //                    typeof(object), Expr.Constant(context.Globals));

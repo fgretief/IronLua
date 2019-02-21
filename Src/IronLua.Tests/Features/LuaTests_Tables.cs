@@ -29,8 +29,7 @@ namespace IronLua.Tests.Features
 
         public void PerformTest(string code, string expect)
         {
-            string output, error;
-            dynamic result = engine.ExecuteTestCode(code, out output, out error);
+            dynamic result = engine.ExecuteTestCode(code, out var output, out var error);
 
             Assert.That((object)result, Is.Null);
             Assert.That(output, Is.EqualTo(expect + Environment.NewLine));
@@ -41,8 +40,7 @@ namespace IronLua.Tests.Features
         {
             var scope = engine.CreateScope();
 
-            string output, error;
-            dynamic result = engine.ExecuteTestCode(code, scope, out output, out error);
+            dynamic result = engine.ExecuteTestCode(code, scope, out var output, out var error);
 
             Assert.That((object)result, Is.Null);
             Assert.That(output, Is.Empty);
@@ -60,8 +58,7 @@ namespace IronLua.Tests.Features
 
             var scope = engine.CreateScope();
 
-            string output, error;
-            dynamic result = engine.CaptureOutput(e => e.Execute(code, scope), out output, out error);
+            dynamic result = engine.CaptureOutput(e => e.Execute(code, scope), out var output, out var error);
 
             Assert.That((object)result, Is.Null);
             Assert.That(output, Is.Empty);
@@ -187,8 +184,8 @@ t['z'] = t.y";
 
         [TestCase("t = { [ = 2 }", "unexpected symbol near '=' (line 1, column 9)", TestName = "TestTables_ParserMsg4a")]
         [TestCase("t = { [1 = 2 }", "']' expected near '=' (line 1, column 10)", TestName = "TestTables_ParserMsg4b")]
-        [TestCase("t = { [1] = }", "'=' expected near '2' (line 1, column 11)", TestName = "TestTables_ParserMsg4c")]
-        [TestCase("t = { [1] = , }", "unexpected symbol near ',' (line 1, column 13)", TestName = "TestTables_ParserMsg4e")]
+        [TestCase("t = { [1] = }", "unexpected symbol near '}' (line 1, column 13)", TestName = "TestTables_ParserMsg4c")]
+        [TestCase("t = { [1] = , }", "unexpected symbol near ',' (line 1, column 13)", TestName = "TestTables_ParserMsg4d")]
 
         [TestCase("t = { a = }", "unexpected symbol near '}' (line 1, column 11)", TestName = "TestTables_ParserMsg5")]
         [TestCase("t = { f() = 3, 2, 1 }", "'}' expected near '=' (line 1, column 11)", TestName = "TestTables_ParserMsg6")]
@@ -366,7 +363,7 @@ t['z'] = t.y";
         #region Metamethod Tests
 
         [Test]
-        public void TestTables_IndexMetamethod()
+        public void TestTables_IndexMetaMethod()
         {
             string code =
 @"

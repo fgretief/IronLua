@@ -108,11 +108,13 @@ namespace IronLua.Tests
             {
                 return action(engine);
             }
+#if SHOW_EXCEPTION
             catch(Exception ex)
             {
-                ex.ToString();
+                TestContext.Error.WriteLine("{0}", ex);
                 return null;
             }
+#endif
             finally
             {
                 // Ensure the two writers' buffer has been flushed to the MemoryStream

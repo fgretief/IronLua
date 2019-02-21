@@ -76,7 +76,7 @@ namespace IronLua.Tests.Features
         }
 
         [Test]
-        public void TestLocal_TwoVariablesWithNoAsighment()
+        public void TestLocal_TwoVariablesWithNoAssignment()
         {
             engine.Execute("local a, b");
             // no exception should be thrown.

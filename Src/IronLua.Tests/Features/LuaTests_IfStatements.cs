@@ -21,8 +21,7 @@ namespace IronLua.Tests.Features
 
         public void PerformTest(string code, string expect)
         {
-            string output, error;
-            dynamic result = engine.ExecuteTestCode(code, out output, out error);
+            dynamic result = engine.ExecuteTestCode(code, out var output, out var error);
 
             Assert.That((object)result, Is.Null);
             Assert.That(output, Is.EqualTo(expect + Environment.NewLine));
@@ -131,7 +130,6 @@ else
     print 'three'
 end";
             PerformTest(code, "three");
-
         }
 
 

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using IronLua.Hosting;
 using Microsoft.Scripting.Hosting;
 using NUnit.Framework;
@@ -21,9 +20,8 @@ namespace IronLua.Tests.Features
 
         public void PerformTest(string code, string expect)
         {
-            string output, error;
-            engine.ExecuteTestCode(code, out output, out error);
-
+            dynamic result = engine.ExecuteTestCode(code, out var output, out var error);
+            Assert.That((object)result, Is.Null);
             Assert.That(output, Is.EqualTo(expect + Environment.NewLine));
             Assert.That(error, Is.Empty);
         }
