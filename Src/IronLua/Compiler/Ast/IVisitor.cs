@@ -14,6 +14,7 @@
         T Visit(Expression.Function expression);
         T Visit(Expression.Nil expression);
         T Visit(Expression.Number expression);
+        T Visit(Expression.IntegerNumber expression);
         T Visit(Expression.Prefix expression);
         T Visit(Expression.String expression);
         T Visit(Expression.Table expression);

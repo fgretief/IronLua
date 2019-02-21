@@ -34,9 +34,24 @@ namespace IronLua.Compiler.Ast
 
         public class Number : Expression
         {
-            public double Literal { get; private set; }
+            public double Literal { get; }
 
             public Number(double literal)
+            {
+                Literal = literal;
+            }
+
+            public override T Visit<T>(IExpressionVisitor<T> visitor)
+            {
+                return visitor.Visit(this);
+            }
+        }
+
+        public class IntegerNumber : Expression
+        {
+            public long Literal { get; }
+
+            public IntegerNumber(long literal)
             {
                 Literal = literal;
             }

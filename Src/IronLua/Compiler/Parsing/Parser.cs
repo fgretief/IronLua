@@ -334,25 +334,26 @@ namespace IronLua.Compiler.Parsing
             var token = Expect(Symbol.Number);
             var number = token.Lexeme;
 
-            double result;
-            var successful = number.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
-                ? NumberUtil.TryParseHexNumber(number.Substring(2), true, out result)
-                : NumberUtil.TryParseDecimalNumber(number, out result);
+            if (NumberUtil.TryConvertStringToInteger(number, out var intValue))
+            {
+                return new Expression.Number(intValue) { Span = token.Span }; // FIXME: Expression.IntegerNumber
+            }
 
-            if (successful)
-                return new Expression.Number(result) { Span = token.Span };
-
+            if (NumberUtil.TryConvertStringToDecimal(number, out var decValue))
+            {
+                return new Expression.Number(decValue) { Span = token.Span }; // FIXME: Expression.DecimalNumber
+            }
+            
             // Check if value is well formed!   Stuff like 10e500 return +INF
             var fields = number.Split('e', 'E');
             if (fields.Length == 2)
             {
-                int v1, v2;
-                bool b1 = Int32.TryParse(fields[0], out v1);
-                bool b2 = Int32.TryParse(fields[1], out v2);
+                var b1 = int.TryParse(fields[0], out var v1);
+                var b2 = int.TryParse(fields[1], out var v2);
 
                 if (b1 && b2)
                 {
-                    result = Math.Sign(v1) > 0 ? double.PositiveInfinity : double.NegativeInfinity;
+                    var result = Math.Sign(v1) > 0 ? double.PositiveInfinity : double.NegativeInfinity;
                     return new Expression.Number(result) { Span = token.Span };
                 }
             }

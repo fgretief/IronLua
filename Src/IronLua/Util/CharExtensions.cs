@@ -64,5 +64,57 @@ namespace IronLua.Util
                 (c >= '0' && c <= '9') ||
                 (c == '_');
         }
+
+        public static bool IsWhiteSpace(this char c)
+        {
+            switch (c)
+            {
+                case ' ': // space
+                case '\f': // form feed
+                case '\t': // horizontal tab
+                case '\v': // vertical tab
+                case '\n': // line feed
+                case '\r': // carriage return
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        public static bool IsHexValue(this char c, out int value)
+        {
+            if ('0' <= c && c <= '9')
+            {
+                value = c - '0';
+                return true;
+            }
+
+            if ('a' <= c && c <= 'f')
+            {
+                value = c - 'a' + 10;
+                return true;
+            }
+
+            if ('A' <= c && c <= 'F')
+            {
+                value = c - 'A' + 10;
+                return true;
+            }
+
+            value = default(int);
+            return false;
+        }
+
+        public static bool IsDecimalValue(this char c, out int value)
+        {
+            if ('0' <= c && c <= '9')
+            {
+                value = c - '0';
+                return true;
+            }
+
+            value = default(int);
+            return false;
+        }
     }
 }

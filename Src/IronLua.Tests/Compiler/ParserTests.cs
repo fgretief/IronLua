@@ -140,7 +140,7 @@ namespace IronLua.Tests.Compiler
                 "coroutine.lua",
                 "goto.lua",
                 // Lua 5.3 specific files
-                //"tpack.lua",
+                "tpack.lua",
                 "utf8.lua"
             };
 
