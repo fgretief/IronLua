@@ -307,7 +307,7 @@ namespace IronLua.Runtime
 
             var luaOptions = options as LuaCompilerOptions;
             if (luaOptions == null)
-                throw new ArgumentException("Compiler context required", "options");
+                throw new ArgumentException("Compiler context required", nameof(options));
             
             SourceCodeReader reader;
             try
@@ -335,6 +335,16 @@ namespace IronLua.Runtime
                 //sourceUnit.CodeProperties = ScriptCodeParseResult.Complete;
                 return new LuaScriptCode(codeContext, sourceUnit, exprLambda);
             }
+        }
+
+        // Convert a CodeDom to source code, and output the generated code and the line number mappings (if any)
+        public override SourceUnit GenerateSourceCode(System.CodeDom.CodeObject codeDom, string path, SourceCodeKind kind)
+        {
+            var codeMemberMethod = codeDom as System.CodeDom.CodeMemberMethod;
+            if (codeMemberMethod == null)
+                throw new NotImplementedException("Lua language does not implement this feature");
+
+            return new LuaCodeDomGen().GenerateCode(codeMemberMethod, this, path, kind);
         }
 
         #region Lua Information
