@@ -210,7 +210,7 @@ print(type(a))";
             PerformTest(code, expected);
         }
 
-        [Test]
+        [Test, Ignore("Test isn't formatted correctly")]
         public void TestAssign_ComplexAssigmentsWithTablesAndMetatables()
         {
             string code = @"

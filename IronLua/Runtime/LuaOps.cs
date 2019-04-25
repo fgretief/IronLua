@@ -8,11 +8,18 @@ using IronLua.Runtime.Binder;
 using Microsoft.Scripting.Utils;
 using Expr = System.Linq.Expressions.Expression;
 using ExprType = System.Linq.Expressions.ExpressionType;
+using System.Dynamic;
+using Microsoft.Scripting;
 
 namespace IronLua.Runtime
 {
     static class LuaOps
     {
+        public static bool IsTrue(object value)
+        {
+            return (!(value is bool) && value != null) || (value is bool && (bool)value);
+        }
+
         public static bool Not(object value)
         {
             return value != null && (!(value is bool) || (bool)value);
@@ -177,7 +184,7 @@ namespace IronLua.Runtime
                     return Not(EquateMetamethod(context, ExprType.Equal, left, right));
 
                 default:
-                    throw new ArgumentOutOfRangeException("op");
+                    throw new ArgumentOutOfRangeException("op", "The operation " + op.ToString() + " was not defined");
             }
         }
 
@@ -277,7 +284,7 @@ namespace IronLua.Runtime
             if ((table = obj as LuaTable) != null)
                 table = table.Metatable;
             else if (context != null)
-                table = context.GetTypeMetatable(obj);
+                table = context.Language.GetTypeMetatable(obj);
 
             return methodName == null || table == null ? null : table.GetValue(methodName);
         }
@@ -316,6 +323,31 @@ namespace IronLua.Runtime
                     variables[varCount] = value;
                 }
             }
+        }
+
+        public static object GetGlobalVariable(string key, IDynamicMetaObjectProvider globals, IDynamicMetaObjectProvider libraries, ScopeStorage environment)
+        {
+            object obj = null;
+            if (environment != null && environment.TryGetValue(key, false, out obj)) 
+                return obj;
+
+            var e = libraries as IDictionary<string, object>;
+            if (e != null && e.TryGetValue(key, out obj)) 
+                return obj;
+
+            e = globals as IDictionary<string, object>;
+            if (e != null && e.TryGetValue(key, out obj)) 
+                return obj;
+                        
+            dynamic d = libraries;
+            if ((obj = d[key]) != null) 
+                return obj;
+
+            d = globals;
+            if ((obj = d[key]) != null) 
+                return obj;
+
+            return null;
         }
     }
 }

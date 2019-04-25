@@ -573,6 +573,12 @@ namespace IronLua.Compiler
 
         Expr CreateGlobalGetMember(string identifier, ScopeStorage globals, Expr libraries, LuaScope scope)
         {
+            //The following code attempts to use a native C# method implementation to handle getting
+            //the requested global member
+
+            //return Expr.Call(typeof(LuaOps).GetMethod("GetGlobalVariable"), Expr.Constant(identifier), scope.GetDlrGlobals(), libraries, Expr.Constant(globals));
+
+
             var temp = Expr.Parameter(typeof(object));
 
             var ex = Expr.Parameter(typeof(Exception), "$ex$");

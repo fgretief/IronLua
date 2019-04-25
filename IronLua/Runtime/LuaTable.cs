@@ -750,8 +750,28 @@ namespace IronLua.Runtime
                 if (!LuaBinaryOperationBinder.BinaryExprTypes.ContainsKey(binder.Operation))
                     return LuaRuntimeException.CreateDMO(Value as LuaTable, "operation {0} not defined for table", binder.Operation.ToString());
 
-                var expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.BinaryOp(Value as LuaTable, binder.Operation, this, arg), Value as LuaTable, 
-                    new FunctionStack(LuaOps.GetMethodName(binder.Operation)));
+                Expr expression = null;
+                switch (binder.Operation)
+                {
+                    case ExprType.Or:
+                    case ExprType.OrElse:
+                        expression = Expr.Condition(Expr.IsTrue(this.Expression, typeof(LuaOps).GetMethod("IsTrue")),
+                            Expr.Convert(this.Expression, typeof(object)),
+                            Expr.Convert(arg.Expression, typeof(object)));
+                        break;
+                    case ExprType.And:
+                    case ExprType.AndAlso:
+                        expression = Expr.Condition(Expr.IsTrue(this.Expression, typeof(LuaOps).GetMethod("IsTrue")),
+                            Expr.Convert(arg.Expression, typeof(object)),
+                            Expr.Convert(this.Expression, typeof(object)));
+                        break;
+                    default:
+                        expression = MetamethodFallbacks.WrapStackTrace(MetamethodFallbacks.BinaryOp(Value as LuaTable, binder.Operation, this, arg), Value as LuaTable,
+                            new FunctionStack(LuaOps.GetMethodName(binder.Operation)));
+                        break;
+                }
+
+                
 
                 return new DynamicMetaObject(expression, RuntimeHelpers.MergeTypeRestrictions(this));
             }

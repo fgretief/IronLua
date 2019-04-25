@@ -87,7 +87,7 @@ namespace IronLua.Tests.Features
         {
             string code = "print(3.14)";
 
-            PerformTest(code, "3.14");
+            PerformTest(code, (3.14).ToString());
         }
 
         public void PerformStartingTest(string code, string expect)
@@ -140,7 +140,7 @@ print(x)";
             string code = @"
 x = 3.14
 print(x)";
-            PerformTest(code, "3.14");
+            PerformTest(code, (3.14).ToString());
         }
 
         [Test]

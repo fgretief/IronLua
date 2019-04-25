@@ -113,7 +113,7 @@ namespace IronLua.Library
 
             while (true)
             {
-                var result = invoker.Target(func);
+                var result = invoker(func);
                 if (result == null)
                     break;
 
@@ -192,7 +192,7 @@ namespace IronLua.Library
         {
             try
             {
-                var result = Context.DynamicCache.GetDynamicCall1().Target(f, new Varargs(args));
+                var result = Context.DynamicCache.GetDynamicCall1()(f, new Varargs(args));
                 return new Varargs(true, result);
             }
             catch (LuaErrorException e)
@@ -317,7 +317,7 @@ namespace IronLua.Library
                 var table = v as LuaTable;
                 var metaToString = LuaOps.GetMetamethod(context, v, Constant.TOSTRING_METAFIELD);
                 if (metaToString != null)
-                    return ToString(context, context.DynamicCache.GetDynamicCall1().Target(metaToString, v));
+                    return ToString(context, context.DynamicCache.GetDynamicCall1()(metaToString, v));
                 
                 return String.Format("table [{0} entries]", (v as LuaTable).Count());
             }
@@ -392,12 +392,12 @@ namespace IronLua.Library
         {
             try
             {
-                var result = Context.DynamicCache.GetDynamicCall0().Target(f);
+                var result = Context.DynamicCache.GetDynamicCall0()(f);
                 return new Varargs(true, result);
             }
             catch (Exception e)
             {
-                var result = Context.DynamicCache.GetDynamicCall1().Target(err, e.Message);
+                var result = Context.DynamicCache.GetDynamicCall1()(err, e.Message);
                 return new Varargs(false, result);
             }
         }

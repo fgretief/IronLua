@@ -191,7 +191,7 @@ host.Trigger('Argument')
         }
 
         [Test]
-        [ExpectedException(ExpectedException = typeof(LuaRuntimeException), ExpectedMessage = "could not find the member 'Method' on 'i'")]
+        [ExpectedException(ExpectedException = typeof(LuaRuntimeException), ExpectedMessage = "could not find the variable 'Method'")]
         public void TestMissingMethod()
         {
             string code =

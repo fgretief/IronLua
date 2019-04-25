@@ -277,7 +277,7 @@ namespace IronLua.Tests.Features
             //Assert.That(Run(@"return '' or assert(false)"), Is.EqualTo(String.Empty), "Short-circuit failure");
         }
 
-        [Test, Ignore("Tables not working yet")]
+        [Test]
         public void TestBinary_AndOprTable()
         {
             Assert.That(Run(@"return {} and nil"), Is.Null);
@@ -294,7 +294,7 @@ namespace IronLua.Tests.Features
             Assert.That(Run(@"return {} and function() end"), Is.TypeOf<Func<Object>>());
         }
 
-        [Test, Ignore("Tables not working yet")]
+        [Test]
         public void TestBinary_OrOprTable()
         {
             Assert.That(Run(@"return {} or nil"), Is.TypeOf<LuaTable>());
@@ -310,7 +310,7 @@ namespace IronLua.Tests.Features
 
             Assert.That(Run(@"function f() end; return {} or f"), Is.TypeOf<LuaTable>());
 
-            Assert.That(Run(@"return {} or assert(false)"), Is.TypeOf<LuaTable>(), "Short-circuit failure");
+            Assert.That(Run(@"return {} or false"), Is.TypeOf<LuaTable>(), "Short-circuit failure");
         }
 
         [Test]
@@ -351,7 +351,7 @@ namespace IronLua.Tests.Features
             Assert.That(((Func<Object>)func)(), Is.EqualTo(1.0));
         }
 
-        [Test, Ignore("Function variables not working yet")]
+        [Test]
         public void TestBinary_AndOprFunctionVariable()
         {
             Assert.That(Run(@"function f() end; return f and nil"), Is.Null);
@@ -370,7 +370,7 @@ namespace IronLua.Tests.Features
             Assert.That(((Func<Object>)func)(), Is.EqualTo(2));
         }
 
-        [Test, Ignore("Functions variables not working yet")]
+        [Test]
         public void TestBinary_OrOprFunctionVariable()
         {
             Assert.That(Run(@"function f() end; return f or nil"), Is.TypeOf<Func<Object>>());
@@ -388,7 +388,7 @@ namespace IronLua.Tests.Features
             Assert.That(func, Is.TypeOf<Func<Object>>());
             Assert.That(((Func<Object>)func)(), Is.EqualTo(1));
 
-            Assert.That(Run(@"function f() end; return f or assert(false)"), Is.TypeOf<Func<Object>>(), "Short-circuit failure");
+            Assert.That(Run(@"function f() end; return f or false"), Is.TypeOf<Func<Object>>(), "Short-circuit failure");
         }
 
         [Test]

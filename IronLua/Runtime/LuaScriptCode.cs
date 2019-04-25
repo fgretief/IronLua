@@ -41,7 +41,7 @@ namespace IronLua.Runtime
             {
                 return _compiledLambda(scope);
             }
-            catch (LuaRuntimeException lrex) //BOOOOBS
+            catch (LuaRuntimeException lrex)
             {
                 throw;
             }
